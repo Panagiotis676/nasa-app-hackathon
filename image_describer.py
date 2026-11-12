@@ -19,13 +19,9 @@ Install:
     pip install ultralytics            # optional, only for --yolo
 
 Examples:
-    python image_describer.py frame.png --cmap inferno --vmin 250 --vmax 320 --units K
-    python image_describer.py jan.png feb.png mar.png --cmap viridis --vmin 0 --vmax 1 --play
-    python image_describer.py frame.png --colorbar bar_crop.png --vmin -2 --vmax 2 --units "C anomaly"
-    python image_describer.py frame.png --crop 120 80 1600 800 --cmap turbo --vmin 0 --vmax 30
-
-    # night lights have no colormap, brighter = more light (no colorbar needed)
-    python image_describer.py lights_2012.png lights_2023.png --cmap brightness --vmax 0.3 --units brightness
+    python earth_jukebox.py frame.png --cmap inferno --vmin 250 --vmax 320 --units K
+    python earth_jukebox.py jan.png feb.png mar.png --cmap viridis --vmin 0 --vmax 1 --play
+    python earth_jukebox.py frame.png --colorbar bar_crop.png --vmin -2 --vmax 2 --units "C anomaly"
 """
 
 from __future__ import annotations
@@ -80,7 +76,7 @@ def load_image(image_input: ImageInput) -> np.ndarray:
     image_path = resolve_image_path(image_input)
     img = cv2.imread(str(image_path))
     if img is None:
-        raise FileNotFoundError(f"Could not read image: {image_input}. Try a real path like '{BASE_DIR / 'media' / 'img.png'}'.")
+        raise FileNotFoundError(f"Could not read image: {image_input}. Try a real path like '{BASE_DIR / 'img.png'}'.")
     return img
 
 
@@ -167,10 +163,9 @@ def sonify_frame(norm: np.ndarray, seconds: float = 8.0, bands: int = 12, sr: in
     pan = np.linspace(0, np.pi / 2, n)  # west (left) -> east (right)
     stereo = np.stack([mix * np.cos(pan), mix * np.sin(pan)], axis=1)
 
-    # Chrysanthos: removed the per-frame normalising that was here. It scaled every
-    # frame up to the same peak, so a "hot" year and a "cold" year came out just as
-    # loud and you couldn't hear the change between them. jukebox() now normalises
-    # once over all the frames together (see normalise_peak below).
+    peak = np.abs(stereo).max()
+    if peak > 0:
+        stereo *= 0.8 / peak
     fade = int(0.05 * sr)
     ramp = np.linspace(0, 1, fade)
     stereo[:fade] *= ramp[:, None]
@@ -180,12 +175,6 @@ def sonify_frame(norm: np.ndarray, seconds: float = 8.0, bands: int = 12, sr: in
 
 def normalise(values: np.ndarray, vmin: float, vmax: float) -> np.ndarray:
     return np.clip((values - vmin) / (vmax - vmin), 0.0, 1.0)
-
-
-def normalise_peak(audio: np.ndarray, peak: float = 0.8) -> np.ndarray:
-    # Chrysanthos: one gain for the whole track, so loudness stays comparable between frames
-    top = float(np.abs(audio).max())
-    return audio * (peak / top) if top > 0 else audio
 
 
 # --------------------------------------------------------------------------
@@ -205,21 +194,13 @@ def describe_frame(values, vmin, vmax, units="", lat_range=(-90.0, 90.0), lon_ra
     south = np.nanmean(values[h // 2 :]) if valid[h // 2 :].any() else float("nan")
     u = f" {units}" if units else ""
     note = " (brightness only - no colormap given, so these are not real units)" if approximate else ""
-    d = decimals(vmin, vmax)
 
     return (
-        f"Coverage {valid.mean() * 100:.0f}% of the frame. Average {np.nanmean(values):.{d}f}{u}, "
-        f"range {np.nanmin(values):.{d}f} to {np.nanmax(values):.{d}f}{u}{note}. "
+        f"Coverage {valid.mean() * 100:.0f}% of the frame. Average {np.nanmean(values):.2f}{u}, "
+        f"range {np.nanmin(values):.2f} to {np.nanmax(values):.2f}{u}{note}. "
         f"Highest value near {abs(lat):.0f} deg {'N' if lat >= 0 else 'S'}, {abs(lon):.0f} deg {'E' if lon >= 0 else 'W'}. "
-        f"Northern half averages {north:.{d}f}{u}, southern half {south:.{d}f}{u}."
+        f"Northern half averages {north:.2f}{u}, southern half {south:.2f}{u}."
     )
-
-
-def decimals(vmin, vmax) -> int:
-    # Chrysanthos: more decimals for small ranges (same rule as fmt() in index.html).
-    # With a fixed 2 decimals the night lights (avg ~0.004) all printed as 0.00
-    rng = abs(vmax - vmin) or 1.0
-    return int(max(0, min(6, 2 - np.floor(np.log10(rng)))))
 
 
 def legend(vmin, vmax, units="") -> str:
@@ -234,10 +215,6 @@ def legend(vmin, vmax, units="") -> str:
 # --------------------------------------------------------------------------
 # Optional: YOLO feature detection (useful for photos, limited for data maps)
 # --------------------------------------------------------------------------
-# Chrysanthos: heads up, the default YOLO model is trained on everyday stuff
-# (people, cars, dogs...), so on a data map it basically finds nothing. Left it in
-# as an optional extra for real photos. It only gets imported with --yolo, so
-# nobody needs to install ultralytics/torch for the normal run.
 def detect_objects(img: np.ndarray, model_name="yolov8n.pt", confidence=0.25) -> dict:
     try:
         from ultralytics import YOLO
@@ -275,37 +252,23 @@ def play(audio: np.ndarray, sr: int = SR) -> None:
 # --------------------------------------------------------------------------
 # Main pipeline
 # --------------------------------------------------------------------------
-def crop_map(img: np.ndarray, crop) -> np.ndarray:
-    """Keep only the map area of the image. crop = (x, y, width, height) in pixels."""
-    # Chrysanthos: exported frames usually have a title, a colorbar, logos or a
-    # border around the map. Without cropping those get read as data too.
-    x, y, w, h = crop
-    out = img[y : y + h, x : x + w]
-    if out.size == 0:
-        raise ValueError(f"--crop {x} {y} {w} {h} is outside the image ({img.shape[1]}x{img.shape[0]})")
-    return out
-
-
-def jukebox(frames, vmin, vmax, units="", cmap="viridis", colorbar=None, seconds=8.0, lat_range=(-90.0, 90.0), lon_range=(-180.0, 180.0), use_yolo=False, out="earth_jukebox.wav", do_play=False, crop=None):
+def jukebox(frames, vmin, vmax, units="", cmap="viridis", colorbar=None, seconds=8.0, lat_range=(-90.0, 90.0), lon_range=(-180.0, 180.0), use_yolo=False, out="earth_jukebox.wav", do_play=False):
     if colorbar is not None:
         lut = lut_from_colorbar(load_image(colorbar), vmin, vmax)
-    elif cmap and cmap != "brightness":
+    elif cmap:
         lut = lut_from_cmap(cmap, vmin, vmax)
     else:
         lut = None
 
-    # Chrysanthos: brightness mode used to force the range to 0..1. Now --vmin/--vmax
-    # are respected (they still default to 0 and 1). Night lights are mostly dim
-    # pixels, so something like --vmax 0.3 is needed or the whole thing is near silent.
     approximate = lut is None
+    if approximate:
+        vmin, vmax = 0.0, 1.0
 
     print(legend(vmin, vmax, units), "\n")
 
     chunks, prev_mean = [], None
     for i, frame in enumerate(frames, 1):
         img = load_image(frame)
-        if crop:
-            img = crop_map(img, crop)
         values = decode_values(img, lut)
         text = describe_frame(values, vmin, vmax, units, lat_range, lon_range, approximate)
         if use_yolo:
@@ -313,9 +276,7 @@ def jukebox(frames, vmin, vmax, units="", cmap="viridis", colorbar=None, seconds
             text += " Detected objects: " + (", ".join(f"{n} {k}" for k, n in found.items()) or "none") + "."
         if prev_mean is not None and not np.all(np.isnan(values)):
             delta = float(np.nanmean(values)) - prev_mean
-            # Chrysanthos: percent too, for data that can't go negative (brightness, CO2...)
-            pct = f" ({delta / prev_mean * 100:+.1f}%)" if vmin >= 0 and prev_mean > 0 else ""
-            text += f" Change from previous frame: {delta:+.{decimals(vmin, vmax)}f}{(' ' + units) if units else ''}{pct}."
+            text += f" Change from previous frame: {delta:+.2f}{(' ' + units) if units else ''}."
         if not np.all(np.isnan(values)):
             prev_mean = float(np.nanmean(values))
         print(f"Frame {i}: {text}")
@@ -323,7 +284,6 @@ def jukebox(frames, vmin, vmax, units="", cmap="viridis", colorbar=None, seconds
         chunks.append(sonify_frame(normalise(values, vmin, vmax), seconds))
 
     audio = np.concatenate(chunks) if len(chunks) > 1 else chunks[0]
-    audio = normalise_peak(audio)
     write_wav(out, audio)
     print(f"\nSaved {out}")
     if do_play:
@@ -334,9 +294,8 @@ def jukebox(frames, vmin, vmax, units="", cmap="viridis", colorbar=None, seconds
 def main():
     p = argparse.ArgumentParser(description="Sonify Earth visualization frames.")
     p.add_argument("frames", nargs="+", help="one or more frames, in time order")
-    p.add_argument("--cmap", choices=sorted(CMAPS) + ["brightness"], default="viridis", help="colormap the map uses ('brightness' = no colormap, e.g. night lights)")
+    p.add_argument("--cmap", choices=sorted(CMAPS), default="viridis", help="colormap the map uses")
     p.add_argument("--colorbar", help="cropped image of the map's colorbar (overrides --cmap)")
-    p.add_argument("--crop", type=int, nargs=4, metavar=("X", "Y", "W", "H"), help="pixel box of the map inside the image, drops titles/colorbar/borders")
     p.add_argument("--vmin", type=float, default=0.0)
     p.add_argument("--vmax", type=float, default=1.0)
     p.add_argument("--units", default="")
@@ -348,7 +307,7 @@ def main():
     p.add_argument("--out", default="earth_jukebox.wav")
     a = p.parse_args()
 
-    jukebox(a.frames, a.vmin, a.vmax, a.units, a.cmap, a.colorbar, a.seconds, tuple(a.lat), tuple(a.lon), a.yolo, a.out, a.play, crop=a.crop)
+    jukebox(a.frames, a.vmin, a.vmax, a.units, a.cmap, a.colorbar, a.seconds, tuple(a.lat), tuple(a.lon), a.yolo, a.out, a.play)
 
 
 if __name__ == "__main__":
