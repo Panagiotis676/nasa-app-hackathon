@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Earth Jukebox – hear NASA Earth visualizations</title>
+<style>
+:root{--bg:#fff;--fg:#111;--mut:#3d4450;--card:#eef1f5;--acc:#0b5bd3;--accfg:#fff;--bd:#5b6472;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0b0d10;--fg:#f5f5f5;--mut:#c4c9d1;--card:#171b21;--acc:#6aa8ff;--accfg:#000;--bd:#9aa3af}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0b0d10;--fg:#f5f5f5;--mut:#c4c9d1;--card:#171b21;--acc:#6aa8ff;--accfg:#000;--bd:#9aa3af}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:1.1rem/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:60rem;margin:0 auto;padding:1rem}
+h1{font-size:2rem;margin:.3em 0}h2{font-size:1.4rem;margin:1.4em 0 .4em}
+section{border-top:2px solid var(--bd)}
+.row{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin:.7rem 0}
+button,select,input{font:inherit;color:var(--fg)}
+button{min-height:3rem;padding:.4rem 1rem;border:2px solid var(--bd);border-radius:.6rem;background:var(--card);cursor:pointer}
+button.p{background:var(--acc);color:var(--accfg);border-color:var(--acc);font-weight:700}
+select,input[type=number],input[type=file]{min-height:2.6rem;padding:.2rem .5rem;border:2px solid var(--bd);border-radius:.5rem;background:var(--bg)}
+input[type=number]{width:7rem}
+label{display:inline-flex;gap:.5rem;align-items:center}
+input[type=checkbox]{width:1.4rem;height:1.4rem}
+:focus-visible{outline:4px solid var(--acc);outline-offset:2px}
+canvas{width:100%;height:auto;border:2px solid var(--bd);background:var(--card)}
+#status{font-weight:700}#dtxt{background:var(--card);padding:.7rem;border-radius:.5rem;min-height:3rem}
+.sr{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+details{margin:.6rem 0}summary{cursor:pointer;min-height:2.6rem;font-weight:700}
+small,.m{color:var(--mut)}
+</style></head><body><main>
+<h1>Earth Jukebox</h1>
+<p>Hear a map of our planet. Each Earth science map frame is turned into live sound, so changes in the data can be heard, not just seen. Everything works with a keyboard and a screen reader.</p>
+<div class="row"><label><input type="checkbox" id="speech" checked> Speak descriptions with the built-in voice (turn this off if you use a screen reader)</label></div>
+
+<section aria-labelledby="hp"><h2 id="hp">Player</h2>
+<!-- Chrysanthos: ready-made maps, so you can hear real NASA data without having to see the map to set it up -->
+<div class="row"><label>Choose a map <select id="preset"><option value="nightlights">NASA: Earth's night lights, 2012 to 2023</option><option value="demo">Demo: made-up temperature map</option><option value="upload" disabled>Your own images (add them under Data)</option></select></label></div>
+<p id="intro"></p>
+<p id="status">Loading…</p>
+<div class="row" role="group" aria-label="Playback controls">
+<button id="play" class="p">Play</button><button id="prev">Previous frame</button><button id="next">Next frame</button><button id="replay">Replay frame</button><button id="desc">Describe frame</button><button id="leg">How to listen</button></div>
+<div class="row">
+<label>Speed <select id="speed"><option value="14">Slow, 14 seconds per frame</option><option value="8" selected>Normal, 8 seconds per frame</option><option value="4">Fast, 4 seconds per frame</option></select></label>
+<label><input type="checkbox" id="loop"> Loop</label>
+<label>Volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.6"></label></div>
+<canvas id="cv" width="320" height="160" role="img" aria-label="Earth map frame"></canvas>
+<h3>Description of the current frame</h3>
+<p id="dtxt">Press Describe frame to hear a summary.</p>
+<div id="live" class="sr" role="status" aria-live="polite"></div>
+</section>
+
+<section aria-labelledby="hd"><h2 id="hd">Data</h2>
+<p class="m">The night lights map is real NASA data and is ready to play. To hear other data, export map frames from the NASA Earth Information Center and add them here in time order (files are sorted by name). Then choose the colormap (or upload a picture of the map’s colorbar) and the value range printed on it.</p>
+<!-- Chrysanthos: the "Use demo frames" button moved into "Choose a map" at the top -->
+<div class="row"><label>Add map frames (PNG or JPEG) <input type="file" id="files" accept="image/*" multiple></label></div>
+<div class="row"><label>Colormap <select id="cmap"><option value="diverging">Blue, white, red (anomaly maps)</option><option value="viridis">Viridis</option><option value="inferno">Inferno</option><option value="plasma">Plasma</option><option value="jet">Rainbow (jet)</option><option value="gray">Brightness only (no colormap)</option><option value="custom" disabled>From your colorbar image</option></select></label></div>
+<!-- Chrysanthos: most NASA maps use their own colour scale, so the built-in ones often don't match. Same idea as --colorbar in image_describer.py -->
+<div class="row"><label>Or upload the map’s colorbar <input type="file" id="cbar" accept="image/*"></label></div>
+<p class="m">Crop that picture so only the coloured bar is in it. A wide bar is read from left (minimum) to right (maximum), a tall bar from bottom (minimum) to top (maximum).</p>
+<div class="row"><label>Minimum value <input type="number" id="vmin" step="any"></label><label>Maximum value <input type="number" id="vmax" step="any"></label><label>Units <input type="text" id="units" size="14"></label></div>
+<details><summary>Advanced: colour tolerance, map area and map extent</summary>
+<div class="row"><label>Colour match tolerance <input type="number" id="tol" value="50" min="5" max="150"></label></div>
+<!-- Chrysanthos: if the image has a title, colorbar or border around the map, those get read as data. Trim them off here -->
+<p class="m">If your images have a title, a colorbar or a border around the map, trim it off so only the map itself is used.</p>
+<div class="row"><label>Trim top % <input type="number" id="cropT" value="0" min="0" max="90"></label><label>Trim bottom % <input type="number" id="cropB" value="0" min="0" max="90"></label><label>Trim left % <input type="number" id="cropL" value="0" min="0" max="90"></label><label>Trim right % <input type="number" id="cropR" value="0" min="0" max="90"></label></div>
+<div class="row"><label>South latitude <input type="number" id="lat0" value="-90"></label><label>North latitude <input type="number" id="lat1" value="90"></label><label>West longitude <input type="number" id="lon0" value="-180"></label><label>East longitude <input type="number" id="lon1" value="180"></label></div></details>
+</section>
+
+<section aria-labelledby="hk"><h2 id="hk">Keyboard shortcuts</h2>
+<ul><li>Space: play or pause</li><li>Right arrow or N: next frame. Left arrow or P: previous frame</li><li>R: replay the frame. D: describe the frame. L: how to listen</li></ul></section>
+
+<section aria-labelledby="ha"><h2 id="ha">How it works</h2>
+<p>Pixel colours are matched back to data values using the colormap you choose, or your colorbar image. For maps without a colormap, like night lights, brightness is the value. The sound sweeps west to east, with your left ear at the west edge and your right ear at the east edge. Pitch is latitude, with north higher and south lower, and loudness is the data value. Pitches use a pentatonic scale so any data sounds musical, and silence means no data. Values are scaled the same way across all frames, so changes over time stay audible. A rising chime between frames means the average went up, and a falling chime means it went down.</p>
+<p class="m">Colours decoded from an image are an approximation of the true data. This is an independent prototype, not an official NASA product.</p></section>
+</main>
+<!-- Chrysanthos: preset data, built by tools/build_nightlights.py. If it's missing the page falls back to the demo -->
+<script src="data/nightlights.js"></script>
+<script>
+const $=id=>document.getElementById(id),cl=v=>Math.max(0,Math.min(1,v));
+const HEX={diverging:['#2166ac','#67a9cf','#f7f7f7','#ef8a62','#b2182b'],viridis:['#440154','#3b528b','#21918c','#5ec962','#fde725'],inferno:['#000004','#420a68','#932667','#dd513a','#fca50a','#fcffa4'],plasma:['#0d0887','#7e03a8','#cc4778','#f89540','#f0f921'],jet:['#00007f','#0000ff','#00ffff','#ffff00','#ff0000','#7f0000']};
+let S,frames=[],uploaded=[],mode='demo',fIdx=0,pos=0,playing=false,timer,last,ac,master,pan,voices=[];
+// Chrysanthos: sources = the {name, img} list being played (a preset or your uploads), customLut = colours from an uploaded colorbar,
+// preset = the NASA preset in use (or null), booting = stay quiet while the page first loads
+let sources=[],customLut=null,preset=null,booting=true;
+function lutFor(n){if(n==='gray')return null;if(n==='custom')return customLut;const s=HEX[n].map(h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16))),L=[];for(let i=0;i<256;i++){const p=i/255*(s.length-1),k=Math.min(Math.floor(p),s.length-2),f=p-k;L.push([0,1,2].map(c=>s[k][c]+(s[k+1][c]-s[k][c])*f));}return L;}
+// Chrysanthos: brightness mode now uses the min/max boxes too. It was stuck on 0..1, and dim maps like night lights came out almost silent.
+// Also reads the trim boxes (crop).
+function readS(){const c=$('cmap').value,g=c==='gray',tr=id=>Math.max(0,Math.min(90,+$(id).value||0));return{gray:g,lut:lutFor(c),vmin:+$('vmin').value,vmax:+$('vmax').value,units:$('units').value.trim()||(g?'brightness':''),tol:+$('tol').value||50,lat0:+$('lat0').value,lat1:+$('lat1').value,lon0:+$('lon0').value,lon1:+$('lon1').value,crop:{t:tr('cropT'),b:tr('cropB'),l:tr('cropL'),r:tr('cropR')}};}
+const u=()=>S.units?' '+S.units:'';
+// Chrysanthos: decimals depend on the value range. With a fixed 2 decimals the night lights (avg ~0.004) all read as "0.00"
+const fmt=n=>n.toFixed(Math.max(0,Math.min(6,2-Math.floor(Math.log10(Math.abs(S.vmax-S.vmin)||1)))));
+// Chrysanthos: for data that can't go below zero (brightness, CO2...) "up 35 percent" is much easier to follow than a raw number
+const pct=(d,base)=>{if(!(S.vmin>=0&&base>0))return'';const p=Math.abs(100*d/base);return' ('+(d>=0?'up ':'down ')+(p<10?p.toFixed(1):Math.round(p))+' percent)';};
+function announce(t){if(booting)return;if($('speech').checked&&'speechSynthesis' in window){speechSynthesis.cancel();const m=new SpeechSynthesisUtterance(t);m.lang='en';speechSynthesis.speak(m);}else{$('live').textContent='';setTimeout(()=>{$('live').textContent=t},60);}}
+function say(t){$('dtxt').textContent=t;$('cv').setAttribute('aria-label','Earth map frame. '+t);announce(t);}
+function decode(raw){const d=raw.data,n=raw.width*raw.height,v=new Float32Array(n),t2=S.tol*S.tol,L=S.lut;for(let i=0;i<n;i++){const r=d[4*i],g=d[4*i+1],b=d[4*i+2];if(d[4*i+3]<128){v[i]=NaN;continue;}if(!L){v[i]=(.2126*r+.7152*g+.0722*b)/255;continue;}let best=1e9,bi=0;for(let k=0;k<256;k++){const c=L[k],e=(r-c[0])**2+(g-c[1])**2+(b-c[2])**2;if(e<best){best=e;bi=k;}}v[i]=best<=t2?S.vmin+(S.vmax-S.vmin)*bi/255:NaN;}return v;}
+function mkFrame(name,W,H,vals,disp){const B=12,f={name,W,H,vals,disp,B:new Float32Array(B*W)},e=[];for(let i=0;i<=B;i++)e.push(Math.round(i*H/B));let n=0,sum=0,mn=Infinity,mx=-Infinity,mi=0,nN=0,sN=0,nS=0,sS=0;
+for(let y=0;y<H;y++)for(let x=0;x<W;x++){const v=vals[y*W+x];if(v!==v)continue;n++;sum+=v;if(v<mn)mn=v;if(v>mx){mx=v;mi=y*W+x;}if(y<H/2){nN++;sN+=v;}else{nS++;sS+=v;}}
+for(let b=0;b<B;b++)for(let x=0;x<W;x++){let c=0,t=0;for(let y=e[b];y<e[b+1];y++){const v=vals[y*W+x];if(v===v){c++;t+=v;}}f.B[b*W+x]=c>=Math.max(1,.3*(e[b+1]-e[b]))?cl((t/c-S.vmin)/(S.vmax-S.vmin)):0;}
+f.st={n,mean:n?sum/n:0,mn,mx,mi,north:nN?sN/nN:NaN,south:nS?sS/nS:NaN};return f;}
+function dispFromVals(f){const c=document.createElement('canvas');c.width=f.W;c.height=f.H;const x=c.getContext('2d'),im=x.createImageData(f.W,f.H);for(let i=0;i<f.W*f.H;i++){const v=f.vals[i],o=4*i;if(v!==v){im.data[o]=107;im.data[o+1]=114;im.data[o+2]=128;}else{const q=cl((v-S.vmin)/(S.vmax-S.vmin));if(S.lut){const L=S.lut[Math.round(q*255)];im.data[o]=L[0];im.data[o+1]=L[1];im.data[o+2]=L[2];}else{im.data[o]=im.data[o+1]=im.data[o+2]=255*q;}}im.data[o+3]=255;}x.putImageData(im,0,0);return c;}
+function demoFrames(){const out=[],s=[.2,.9,1.8,2.6,1.6,.4];for(let t=0;t<6;t++){const W=160,H=80,v=new Float32Array(W*H);for(let y=0;y<H;y++)for(let x=0;x<W;x++){const lo=x/(W-1)*360-180,la=90-y/(H-1)*180,land=(lo>-130&&lo<-60&&la>15&&la<70)||(lo>-80&&lo<-35&&la>-55&&la<10)||(lo>-15&&lo<50&&la>-35&&la<35)||(lo>-10&&lo<150&&la>35&&la<70)||(lo>113&&lo<153&&la>-39&&la<-12);let a=NaN;if(!land){a=.8*Math.sin(lo*Math.PI/90+t*.9)*Math.cos(la*Math.PI/120)+s[t]*Math.exp(-(((lo+130)/35)**2+(la/10)**2));a=Math.max(-3,Math.min(3,a));if(S.gray)a=(a+3)/6;}v[y*W+x]=a;}
+const f=mkFrame('Demo month '+(t+1)+' of 6, synthetic',W,H,v,null);f.disp=dispFromVals(f);out.push(f);}return out;}
+function describe(f,i){const s=f.st;if(!s.n)return'Frame '+(i+1)+': no readable data. Check the colormap, range and tolerance.';const x=s.mi%f.W,y=Math.floor(s.mi/f.W),la=S.lat1-y/Math.max(f.H-1,1)*(S.lat1-S.lat0),lo=S.lon0+x/Math.max(f.W-1,1)*(S.lon1-S.lon0),q=fmt;
+let t='Frame '+(i+1)+' of '+frames.length+', '+f.name+'. Data covers '+Math.round(100*s.n/(f.W*f.H))+' percent of the map. The average is '+q(s.mean)+u()+', ranging from '+q(s.mn)+' to '+q(s.mx)+u()+'. The highest value is near '+Math.abs(la).toFixed(0)+' degrees '+(la>=0?'north':'south')+', '+Math.abs(lo).toFixed(0)+' degrees '+(lo>=0?'east':'west')+'. The northern half averages '+q(s.north)+u()+' and the southern half '+q(s.south)+u()+'.';
+const p=frames[i-1];if(p&&p.st.n)t+=' Compared with the previous frame, the average changed by '+(s.mean-p.st.mean>=0?'plus ':'minus ')+q(Math.abs(s.mean-p.st.mean))+u()+pct(s.mean-p.st.mean,p.st.mean)+'.';
+// Chrysanthos: the big picture too, change since the first frame (e.g. 2012 to 2023)
+const f0=frames[0];if(i>1&&f0.st.n)t+=' Since the first frame, '+f0.name+', it changed by '+(s.mean-f0.st.mean>=0?'plus ':'minus ')+q(Math.abs(s.mean-f0.st.mean))+u()+pct(s.mean-f0.st.mean,f0.st.mean)+'.';return t;}
+const legendText=()=>'Listening guide. The sound sweeps from the west edge of the map in your left ear to the east edge in your right ear. Higher pitch means further north and lower pitch further south. '+(preset&&preset.loudness?preset.loudness:'Louder means a higher value, from silence at '+S.vmin+u()+' or no data, up to full volume at '+S.vmax+u()+'.')+' When a new frame starts, a rising two-note chime means the average went up and a falling chime means it went down.';
+function draw(){const f=frames[fIdx];if(!f)return;const c=$('cv'),x=c.getContext('2d');if(c.width!==f.disp.width||c.height!==f.disp.height){c.width=f.disp.width;c.height=f.disp.height;}x.drawImage(f.disp,0,0);const px=pos*c.width,w=Math.max(3,c.width/120);x.fillStyle='#000';x.fillRect(px-w,0,2*w,c.height);x.fillStyle='#ffe600';x.fillRect(px-w/2,0,w,c.height);}
+const updStatus=()=>{$('status').textContent=frames.length?'Frame '+(fIdx+1)+' of '+frames.length+': '+frames[fIdx].name:'No frames loaded.';};
+const hz=i=>440*2**((48+12*Math.floor(i/5)+[0,2,4,7,9][i%5]-69)/12);
+function initAudio(){if(ac)return;ac=new(window.AudioContext||window.webkitAudioContext)();master=ac.createGain();master.gain.value=+$('vol').value;const comp=ac.createDynamicsCompressor(),bus=ac.createGain();pan=ac.createStereoPanner?ac.createStereoPanner():null;if(pan){bus.connect(pan);pan.connect(comp);}else bus.connect(comp);comp.connect(master);master.connect(ac.destination);
+for(let b=0;b<12;b++){const f=hz(11-b),g=ac.createGain(),g2=ac.createGain(),o1=ac.createOscillator(),o2=ac.createOscillator();g.gain.value=0;g2.gain.value=.3;o1.frequency.value=f;o2.frequency.value=2*f;o1.connect(g);o2.connect(g2);g2.connect(g);g.connect(bus);o1.start();o2.start();voices.push(g);}}
+function chime(dir){const sq=dir==='up'?[660,880]:dir==='down'?[880,660]:[770];sq.forEach((fr,k)=>{const o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime+k*.18;o.type='triangle';o.frequency.value=fr;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.25,t+.02);g.gain.exponentialRampToValueAtTime(.001,t+.3);o.connect(master);g.connect(master);o.disconnect();o.connect(g);o.start(t);o.stop(t+.32);});}
+function goTo(i){fIdx=i;pos=0;const f=frames[i],p=frames[i-1];let m='Frame '+(i+1)+' of '+frames.length+', '+f.name+'.',dir=null;if(p&&p.st.n&&f.st.n){
+// Chrysanthos: for data that can't go negative the threshold is now 1% of the previous average, not 1% of the whole range.
+// Night lights grow ~2-6% a year, which used to always come out as "about the same" with a flat chime.
+const d=f.st.mean-p.st.mean,th=S.vmin>=0&&p.st.mean>0?p.st.mean*.01:(S.vmax-S.vmin)*.01;dir=d>th?'up':d<-th?'down':'same';m+=' Average '+(dir==='same'?'about the same':dir+' '+fmt(Math.abs(d))+u()+pct(d,p.st.mean))+'.';}if(playing&&dir)chime(dir);announce(m);draw();updStatus();}
+function tick(){const now=performance.now();pos+=(now-last)/1000/(+$('speed').value);last=now;
+if(pos>=1){if(fIdx<frames.length-1)goTo(fIdx+1);else if($('loop').checked)goTo(0);else{pause();pos=1;draw();announce('End of frames.');return;}}
+const f=frames[fIdx],col=Math.min(f.W-1,Math.floor(pos*f.W)),t=ac.currentTime;for(let b=0;b<12;b++)voices[b].gain.setTargetAtTime(Math.pow(f.B[b*f.W+col],1.5)*.07,t,.04);if(pan)pan.pan.setTargetAtTime(pos*2-1,t,.04);draw();}
+async function play(){if(!frames.length){announce('Add frames first.');return;}initAudio();await ac.resume();if(pos>=1)pos=0;playing=true;last=performance.now();clearInterval(timer);timer=setInterval(tick,30);$('play').textContent='Pause';}
+function pause(){playing=false;clearInterval(timer);if(ac)voices.forEach(g=>g.gain.setTargetAtTime(0,ac.currentTime,.05));$('play').textContent='Play';}
+const toggle=()=>playing?pause():play();
+function step(d){const i=fIdx+d;if(i<0||i>=frames.length){announce(d>0?'This is the last frame.':'This is the first frame.');return;}goTo(i);}
+function replay(){pos=0;draw();if(!playing)play();}
+const describeNow=()=>{if(frames.length)say(describe(frames[fIdx],fIdx));};
+// Chrysanthos: images are now cropped (prep) on every rebuild, so changing the trim boxes takes effect straight away.
+// "lead" is an optional sentence to say first (e.g. the preset intro). It's also called as an event listener, hence the typeof check.
+function rebuild(lead){pause();S=readS();const pre=typeof lead==='string'?lead+' ':'';if(!(S.vmax>S.vmin)){announce('The maximum value must be larger than the minimum.');return;}
+if(S.crop.t+S.crop.b>=95||S.crop.l+S.crop.r>=95){announce('The trims leave almost nothing of the map. Make them smaller.');return;}
+frames=mode==='demo'?demoFrames():sources.map(x=>{const p=prep(x.img,x.name);return mkFrame(p.name,p.raw.width,p.raw.height,decode(p.raw),p.disp);});
+fIdx=Math.min(fIdx,Math.max(0,frames.length-1));pos=0;draw();updStatus();if(!frames.length){announce('Add images to begin.');return;}
+const cov=frames.reduce((a,f)=>a+f.st.n/(f.W*f.H),0)/frames.length;announce(pre+(cov<.05?'Loaded '+frames.length+' frames, but very few pixels matched the colormap. Check the colormap, range and tolerance.':'Loaded '+frames.length+' frames. Press Play to listen.'));}
+function setDemo(){$('cmap').value='diverging';$('vmin').value=-3;$('vmax').value=3;$('units').value='°C anomaly';mode='demo';preset=null;$('intro').textContent='Made-up data, not from NASA: six months of a pretend ocean temperature anomaly, with a warm patch in the Pacific that grows and then fades.';}
+const loadImg=f=>new Promise((ok,no)=>{const url=URL.createObjectURL(f),i=new Image();i.onload=()=>{URL.revokeObjectURL(url);ok(i);};i.onerror=()=>no(new Error(f.name));i.src=url;});
+const loadURL=(url,name)=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>no(new Error(name));i.src=url;});
+// Chrysanthos: prep now cuts out the map area first (trim boxes), then makes the small analysis copy and the display copy like before
+function prep(im,name){const k=S.crop,sx=im.width*k.l/100,sy=im.height*k.t/100,sw=Math.max(1,im.width*(1-(k.l+k.r)/100)),sh=Math.max(1,im.height*(1-(k.t+k.b)/100)),mk=m=>{const s=Math.min(1,m/Math.max(sw,sh)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(sw*s));c.height=Math.max(1,Math.round(sh*s));c.getContext('2d').drawImage(im,sx,sy,sw,sh,0,0,c.width,c.height);return c;},a=mk(160),d=mk(720);return{name:name.replace(/\.[^.]+$/,'').replace(/[_-]+/g,' '),raw:a.getContext('2d').getImageData(0,0,a.width,a.height),disp:d};}
+$('files').addEventListener('change',async e=>{const fl=[...e.target.files].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));if(!fl.length)return;announce('Loading '+fl.length+' images.');const up=[];try{for(const f of fl)up.push({name:f.name,img:await loadImg(f)});}catch(err){announce('Could not read '+err.message+'. Please use PNG or JPEG images.');return;}
+uploaded=up;sources=up;mode='images';preset=null;const o=$('preset').querySelector('[value=upload]');o.disabled=false;$('preset').value='upload';$('intro').textContent='Your own images, '+up.length+' frames.';fIdx=0;rebuild();});
+
+// Chrysanthos: load a ready-made map. Sets the colormap, range, units and extent for you, then plays like uploaded images.
+async function usePreset(id){pause();
+if(id==='demo'){setDemo();fIdx=0;rebuild('Demo with made-up data.');return;}
+if(id==='upload'){if(!uploaded.length)return;preset=null;sources=uploaded;mode='images';$('intro').textContent='Your own images, '+uploaded.length+' frames.';fIdx=0;rebuild();return;}
+const P=(window.EJ_PRESETS||{})[id];if(!P){announce('This map is missing, the file data/'+id+'.js was not found.');return;}
+$('status').textContent='Loading '+P.title+'…';
+let imgs;try{imgs=await Promise.all(P.frames.map(f=>loadURL(f.src,f.name)));}catch(err){announce('Could not load '+P.title+'.');return;}
+$('cmap').value=P.cmap;$('vmin').value=P.vmin;$('vmax').value=P.vmax;$('units').value=P.units||'';
+$('lat0').value=P.lat[0];$('lat1').value=P.lat[1];$('lon0').value=P.lon[0];$('lon1').value=P.lon[1];
+['cropT','cropB','cropL','cropR'].forEach(k=>{$(k).value=0;});
+preset=P;sources=P.frames.map((f,i)=>({name:f.name,img:imgs[i]}));mode='images';
+$('intro').textContent=P.intro+' Source: '+P.source+'.';fIdx=0;rebuild(P.intro);}
+$('preset').addEventListener('change',()=>usePreset($('preset').value));
+
+// Chrysanthos: same idea as lut_from_colorbar() in image_describer.py. Average across the bar's thickness, then take 256 colours along it.
+$('cbar').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;let im;try{im=await loadImg(f);}catch(err){announce('Could not read '+err.message+'.');return;}
+const c=document.createElement('canvas'),s=Math.min(1,1024/Math.max(im.width,im.height));c.width=Math.max(1,Math.round(im.width*s));c.height=Math.max(1,Math.round(im.height*s));
+const x=c.getContext('2d');x.drawImage(im,0,0,c.width,c.height);const d=x.getImageData(0,0,c.width,c.height).data,W=c.width,H=c.height,wide=W>=H,len=wide?W:H,th=wide?H:W,line=[];
+for(let i=0;i<len;i++){let r=0,g=0,b=0;for(let j=0;j<th;j++){const o=4*(wide?j*W+i:i*W+j);r+=d[o];g+=d[o+1];b+=d[o+2];}line.push([r/th,g/th,b/th]);}
+if(!wide)line.reverse(); // tall bar: bottom = minimum
+customLut=[];for(let k=0;k<256;k++)customLut.push(line[Math.round(k*(len-1)/255)]);
+$('cmap').querySelector('[value=custom]').disabled=false;$('cmap').value='custom';rebuild('Colorbar loaded, now set the minimum and maximum printed on it.');});
+
+// Chrysanthos: picking "brightness only" by hand resets the range to 0..1 (presets set their own). Has to be added before the rebuild listener below.
+$('cmap').addEventListener('change',()=>{if($('cmap').value==='gray'){$('vmin').value=0;$('vmax').value=1;}});
+['cmap','vmin','vmax','units','tol','lat0','lat1','lon0','lon1','cropT','cropB','cropL','cropR'].forEach(id=>$(id).addEventListener('change',rebuild));
+$('play').onclick=toggle;$('prev').onclick=()=>step(-1);$('next').onclick=()=>step(1);$('replay').onclick=replay;$('desc').onclick=describeNow;$('leg').onclick=()=>say(legendText());
+$('vol').addEventListener('input',()=>{if(master)master.gain.value=+$('vol').value;});
+document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const t=e.target.tagName;if(t==='INPUT'||t==='SELECT'||t==='TEXTAREA')return;const k=e.key.toLowerCase();
+if(k===' '){if(t==='BUTTON'||t==='SUMMARY'||t==='A')return;e.preventDefault();toggle();}
+else if(k==='arrowright'||k==='n'){e.preventDefault();step(1);}else if(k==='arrowleft'||k==='p'){e.preventDefault();step(-1);}
+else if(k==='r')replay();else if(k==='d')describeNow();else if(k==='l')say(legendText());});
+setDemo();S=readS();frames=demoFrames();draw();updStatus();
+// Chrysanthos: open on the real NASA night lights if the data file is there, otherwise stay on the demo like before
+if(window.EJ_PRESETS&&window.EJ_PRESETS.nightlights){$('preset').value='nightlights';usePreset('nightlights').finally(()=>{booting=false;});}
+else{$('preset').querySelector('[value=nightlights]').disabled=true;$('preset').value='demo';booting=false;}
+</script></body></html>
