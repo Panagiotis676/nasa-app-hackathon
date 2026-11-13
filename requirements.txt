@@ -1,6 +1,6 @@
 # pip install -r requirements.txt
 # image_describer.py, tools/ and the first prototype
-numpy>=1.24
+numpy>=2.5.4
 opencv-python>=4.8
 pillow>=10.0
 
