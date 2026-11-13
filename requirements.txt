@@ -6,4 +6,4 @@ pillow>=10.0
 
 # optional: --play in image_describer.py and the prototype's audio
 sounddevice>=0.4
-scipy>=1.10
+scipy>=1.18.1
