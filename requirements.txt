@@ -2,7 +2,7 @@
 # image_describer.py, tools/ and the first prototype
 numpy>=1.24
 opencv-python>=4.8
-pillow>=10.0
+pillow>=13.0.0
 
 # optional: --play in image_describer.py and the prototype's audio
 sounddevice>=0.4
