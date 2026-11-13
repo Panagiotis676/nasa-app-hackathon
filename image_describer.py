@@ -80,7 +80,7 @@ def load_image(image_input: ImageInput) -> np.ndarray:
     image_path = resolve_image_path(image_input)
     img = cv2.imread(str(image_path))
     if img is None:
-        raise FileNotFoundError(f"Could not read image: {image_input}. Try a real path like '{BASE_DIR / 'img.png'}'.")
+        raise FileNotFoundError(f"Could not read image: {image_input}. Try a real path like '{BASE_DIR / 'media' / 'img.png'}'.")
     return img
 
 

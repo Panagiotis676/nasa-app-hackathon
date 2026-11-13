@@ -1,7 +1,8 @@
 from PIL import Image
 from pathlib import Path
 
-image_path = Path(r"C:\Users\User\OneDrive - Cyprus University of Technology\Desktop\projects\omilos\nasa-app-hackathon\img.png")
+# Chrysanthos: was a C:\Users\... path that only worked on one laptop. The sample image now lives in media/
+image_path = Path(__file__).resolve().parent.parent / "media" / "img.png"
 
 def channel_score(value):
     return round((value / 255) * 100, 2)

@@ -1,0 +1,16 @@
+# editor settings, everyone has their own
+.vscode/
+
+# the first prototype downloads this video when you run it
+media/video_1.mp4
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# mac and windows junk
+.DS_Store
+Thumbs.db
+desktop.ini
