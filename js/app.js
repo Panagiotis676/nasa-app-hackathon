@@ -9,7 +9,7 @@ let sources=[],customLut=null,preset=null,booting=true;
 // Chrysanthos: view = 'frames' (play every frame) or 'change' (one sweep of last minus first frame), downVoices = the low buzz for "went down"
 let view='frames',downVoices=[];
 // Chrysanthos: Explore mode state, the cursor is kept in degrees so it stays put when the frame or the view changes
-let exploring=false,exLat=null,exLon=null,exDrag=false,exT=0;
+let exploring=false,exLat=null,exLon=null,exDrag=false,exT=0,exTm;
 // Panagiotis: manualCustomLut = a colorbar image was uploaded by hand, autoBarState = colorbar found inside the frames
 let manualCustomLut=false,autoBarState=null;
 // Panagiotis: stop only the sound (used when Describe starts talking during playback)
@@ -56,8 +56,10 @@ function hoverLabel(el){
  const ga={Open:'Άνοιξέ τον.','Choose from':'Διάλεξε από αυτό.','Open or close':'Άνοιξέ την ή κλείσ’ την.',Toggle:'Ενεργοποίησέ το ή απενεργοποίησέ το.',Edit:'Επεξεργάσου το.',View:'Δες την.',Activate:'Πάτησέ το.'}[action]||'Πάτησέ το.';
  return {en,el:gr+': '+name+'. '+ga+disabled};
 }
+// Chrysanthos: hover speech only while Explore is on, otherwise just moving the mouse around the page kept talking.
+// Not over the map itself: in Explore the map plays its own note under the mouse.
 function announceHover(el){
- if(booting||!$('speech').checked||!('speechSynthesis' in window))return;
+ if(booting||!exploring||el.id==='cv'||!$('speech').checked||!('speechSynthesis' in window))return;
  const msg=hoverLabel(el);speechSynthesis.cancel();
  const en=new SpeechSynthesisUtterance(msg.en);en.lang='en-US';
  const elGR=new SpeechSynthesisUtterance(msg.el);elGR.lang='el-GR';
@@ -427,7 +429,7 @@ const exHelp=()=>'Explore mode. The arrow keys move around the map, 10 degrees a
 function setExplore(on,quiet){if(on===exploring)return;if(on&&!frames.length){announce('Add frames first.');return;}
  exploring=on;$('explore').setAttribute('aria-pressed',String(on));$('cv').classList.toggle('exploring',on);
  if(on){pause();[exLat,exLon]=exLat===null?exClamp((S.lat0+S.lat1)/2,(S.lon0+S.lon1)/2):exClamp(exLat,exLon);draw();if(!quiet)say(exHelp());}
- else{exDrag=false;draw();if(!quiet)announce('Explore mode off. The arrow keys change the frame again.');}}
+ else{exDrag=false;clearTimeout(exTm);draw();if(!quiet)announce('Explore mode off. The arrow keys change the frame again.');}}
 function exSpeak(){const f=frames[fIdx];if(!f)return;const v=exAvg(f.vals,f.W,f.H,exLat,exLon),pl=placeAt(exLat,exLon),ns=Math.round(exLat),ew=Math.round(exLon);
  let t=(pl?pl+', ':'')+Math.abs(ns)+' degrees '+(ns>=0?'north':'south')+', '+Math.abs(ew)+' '+(ew>=0?'east':'west')+': ';
  if(v!==v)t+='no data here.';
@@ -440,7 +442,10 @@ const exPoint=e=>{const r=$('cv').getBoundingClientRect();return[S.lat1-(e.clien
 $('explore').onclick=()=>setExplore(!exploring);
 // a click or a tap on the map jumps there (and turns Explore on), dragging a finger keeps playing as it moves
 $('cv').addEventListener('pointerdown',e=>{if(!frames.length)return;if(!exploring)setExplore(true);exDrag=true;try{$('cv').setPointerCapture(e.pointerId);}catch(_err){/* not supported */}exGo(...exPoint(e));});
-$('cv').addEventListener('pointermove',e=>{if(exDrag&&exploring&&performance.now()-exT>120)exGo(...exPoint(e));});
+// in Explore a mouse plays just by moving over the map, no click needed (a finger has to touch, so that one needs exDrag)
+// the cross always follows the pointer, but notes are at most one every 120 ms, and the spot where it stops always gets its note
+$('cv').addEventListener('pointermove',e=>{if(!exploring||!(exDrag||e.pointerType==='mouse'))return;clearTimeout(exTm);if(performance.now()-exT>120){exGo(...exPoint(e));return;}
+ [exLat,exLon]=exClamp(...exPoint(e));draw();exTm=setTimeout(()=>{exT=performance.now();exTone();},120);});
 ['pointerup','pointercancel'].forEach(n=>$('cv').addEventListener(n,()=>{exDrag=false;}));
 // Chrysanthos: + and - change the speed, ? reads all the shortcuts (both were in the plan in ARCHITECTURE.md)
 const SHORTCUTS='Keyboard shortcuts. Space: play or pause. Right arrow or N: next frame. Left arrow or P: previous frame. R: replay the frame. D: describe the frame. L: how to listen. C: switch between every frame and only what changed. Plus or minus: faster or slower. E: explore the map, the arrow keys move around it and Enter says the place and the value. Escape or E again: leave Explore. Question mark: read these shortcuts again.';
