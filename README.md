@@ -31,7 +31,7 @@ The Earth Jukebox (`index.html`) turns a series of map frames into sound, right 
 4. **Hear only the change.** "Listen to → Only what changed" (or the `C` key) plays one sweep of the last frame minus the first: a bright, high tone where the value went up, a low buzz where it went down, silence where nothing changed. The voice then names the places that changed the most, and the picture shows increases in gold and decreases in blue.
 5. **Accessible.** Everything works with the keyboard and a screen reader (or the built-in voice), and there is a "How to listen" guide.
 
-It opens on real NASA data: **Earth's night lights, 2012 to 2023** (NASA Black Marble, [SVS #5276](https://svs.gsfc.nasa.gov/5276/)), so you can press Play without setting anything up. Over that period the lights grow by about 30%, with a small dip in 2020. In "only what changed" mode you hear that the lights grew the most near China, the Middle East and India, and dimmed the most in western Europe and Ukraine.
+It opens on real NASA data: **Earth's night lights, 2012 to 2023** (NASA Black Marble, [SVS #5276](https://svs.gsfc.nasa.gov/5276/)), so you can press Play without setting anything up. Over that period the lights grow by about 32%, with a small dip in 2020. In "only what changed" mode you hear that the lights grew the most near China, the Middle East and India, and dimmed the most in western Europe (including Spain, Portugal and the UK) and Ukraine.
 
 `image_describer.py` does the same from the command line: it writes a stereo WAV file and prints a text description of every frame.
 

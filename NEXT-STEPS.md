@@ -12,7 +12,7 @@
 | **Η υποβολή κλείνει** | **Κυριακή 15/11, 23:59** (τοπική ώρα). **Στόχος: υποβολή μέχρι τις 18:00.** |
 | **Η εφαρμογή online** | https://panagiotis676.github.io/nasa-app-hackathon/ |
 | **Repo** | https://github.com/Panagiotis676/nasa-app-hackathon (public) |
-| **Τελευταία έκδοση που δουλεύει σίγουρα** | commit `91ee8cf` |
+| **Τελευταία έκδοση που δουλεύει σίγουρα** | το commit «Merge Panagiotis's upload list and colorbar detection with the change mode» (14/11) |
 
 Το link της εφαρμογής ενημερώνεται μόνο του 1–2 λεπτά μετά από κάθε push στο `main`.
 
@@ -23,12 +23,12 @@
 - Ο ήχος περνάει τον χάρτη **από αριστερά (δύση) προς τα δεξιά (ανατολή)**, στα αντίστοιχα αυτιά.
 - **Ψηλή νότα = βορράς, χαμηλή = νότος.** **Δυνατά = περισσότερο**, σιωπή = τίποτα.
 - Ανοίγει με αληθινά δεδομένα: **τα φώτα της Γης τη νύχτα, 2012–2023** (NASA Black Marble).
-  Τα φώτα αυξάνονται **~30%**, με μικρή πτώση το **2020** (COVID).
+  Τα φώτα αυξάνονται **~32%**, με μικρή πτώση το **2020** (COVID).
 - **Δύο τρόποι ακρόασης** (μενού «Listen to» ή πλήκτρο **C**):
   1. **Every frame:** κάθε χρονιά με τη σειρά. Ένα «ντινγκ» που ανεβαίνει ή κατεβαίνει λέει αν αυξήθηκε ή μειώθηκε.
   2. **Only what changed:** ένα πέρασμα με τη διαφορά 2023 μείον 2012. **Καθαρός ψηλός ήχος** = άναψαν φώτα,
      **χαμηλό βουητό** = έσβησαν. Η φωνή λέει: *«Lights grew the most near China, the Middle East and India.
-     Lights dimmed the most near western Europe and Ukraine.»* Ο χάρτης γίνεται **χρυσός** και **μπλε**.
+     Lights dimmed the most near western Europe and the Iberian Peninsula.»* Ο χάρτης γίνεται **χρυσός** και **μπλε**.
 - Φωνή που περιγράφει κάθε χρονιά (πλήκτρο **D**), πλήρης χειρισμός από πληκτρολόγιο, δουλεύει με screen reader.
 
 **Σε μία πρόταση:** *Earth Jukebox lets blind people hear how our planet changes: NASA maps become sound,
@@ -70,12 +70,10 @@ spaceappschallenge.org → η σελίδα της ομάδας → **Project**. 
 - [ ] Το πεδίο για τη χρήση AI (αν υπάρχει) είναι συμπληρωμένο **ειλικρινά**.
 
 ### Αν περισσέψει χρόνος (προαιρετικά, με αυτή τη σειρά)
-1. **Το Play να κόβει τη φωνή.** Τώρα, αν πατήσεις Play ενώ μιλάει, ακούγονται και τα δύο. Στο `js/app.js`,
-   μέσα στη `function play()`, προσθέστε `if('speechSynthesis' in window)speechSynthesis.cancel();`.
-2. **Ασφάλεια (Panagiotis, 5 λεπτά):** Settings → Advanced Security → **Enable** στα: Private vulnerability
+1. **Ασφάλεια (Panagiotis, 5 λεπτά):** Settings → Advanced Security → **Enable** στα: Private vulnerability
    reporting, Dependency graph, Dependabot alerts, Dependabot security updates, Code scanning → CodeQL → Default,
    Secret Protection + Push protection. Είναι δωρεάν τώρα που το repo είναι public. Δεν είναι υποχρεωτικό.
-3. **Δεύτερο dataset:** μόνο αν προλαβαίνετε πριν τις 14:00. Αντιγράψτε το `tools/build_nightlights.py`,
+2. **Δεύτερο dataset:** μόνο αν προλαβαίνετε πριν τις 14:00. Αντιγράψτε το `tools/build_nightlights.py`,
    αλλάξτε τα URLs και τις χρονιές, και προσθέστε επιλογή στο «Choose a map».
 
 **Μετά τις 15:00 μόνο μικρές διορθώσεις.** Μετά από κάθε push περιμένετε 2 λεπτά και ανοίξτε το link να δείτε
@@ -92,8 +90,8 @@ spaceappschallenge.org → η σελίδα της ομάδας → **Project**. 
 > or south, and loudness tells you how much. It opens on NASA's Black Marble night lights for 2012–2023, so you
 > can hear the world light up year by year, with a dip in 2020. A "hear only the change" mode plays 2023 minus
 > 2012 in one sweep, with a clean tone where lights appeared and a low buzz where they faded. A voice then names
-> the places that changed most: lights grew near China, the Middle East and India, and dimmed in western Europe
-> and Ukraine. It works with a keyboard and screen reader, in any browser, with nothing to install.
+> the places that changed most: lights grew near China, the Middle East and India, and dimmed in western Europe.
+> It works with a keyboard and screen reader, in any browser, with nothing to install.
 
 **Project details**
 
@@ -138,10 +136,24 @@ spaceappschallenge.org → η σελίδα της ομάδας → **Project**. 
 - Διορθώθηκαν τα σημεία όπου η αλλαγή **δεν ακουγόταν**: κανονικοποίηση έντασης, πολύ σκοτεινοί χάρτες,
   ένα «ντινγκ» που έλεγε πάντα «about the same», αριθμοί που έβγαιναν «0.00».
 - Προστέθηκαν: ανέβασμα colorbar, κόψιμο περιθωρίων (trim), ποσοστά στις περιγραφές, ονόματα περιοχών.
+- **Panagiotis:** λίστα ανεβασμένων εικόνων (προσθέτεις σε δόσεις, αφαιρείς), **αυτόματος εντοπισμός της κλίμακας**
+  μέσα στις εικόνες, και το Describe σταματάει τον ήχο για να ακουστεί η περιγραφή.
+- Το Play σταματάει τη φωνή και ξεκινάει τον ήχο αμέσως. Η φωνή λέει τη χρονιά και την ώρα που παίζει.
+- Οι αριθμοί για τα φώτα βγαίνουν πλέον **ακριβείς** (μέσος όρος όλων των pixels): πριν, ο browser «πηδούσε»
+  pixels και έβγαζε π.χ. ψεύτικη πτώση το 2015.
 - Το **Pause** σταματάει και τη φωνή.
 - Νέα λειτουργία **«Only what changed»**.
 - Οργάνωση του repo (`media/`, `prototype/`, `requirements.txt`), `SECURITY.md`, Dependabot.
 - Repo **public** και **GitHub Pages** ενεργά.
+
+## Κανόνες για το git (για να μη χαθεί δουλειά)
+
+1. **Πάντα `git pull` πριν ξεκινήσεις** να αλλάζεις κάτι, και ξανά πριν το push.
+2. **Αν βγει conflict, μην κρατήσεις απλώς το δικό σου αρχείο.** Έτσι χάθηκαν το Σάββατο το «Only what changed»
+   και διορθώσεις στο `image_describer.py`, και χρειάστηκε να τα ενώσουμε ξανά. Κράτα και τις δύο αλλαγές, ή ρώτα.
+3. **Μην ανεβάζεις** `__pycache__/`, `.pt` μοντέλα, κατεβασμένα video ή αρχεία που βγάζουν τα scripts.
+   Το `.gitignore` τα κρύβει πλέον. Οι εικόνες και οι ήχοι που θέλουμε στο repo μπαίνουν στο `media/`.
+4. Μικρά commits με τίτλο που λέει τι άλλαξε.
 
 ## Για όποιον αλλάξει κώδικα (ή για το AI του)
 
