@@ -81,6 +81,7 @@ a{color:var(--acc);text-underline-offset:3px}
 .stats dt{font:600 .74rem/1.35 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
 .stats dd{margin:0;font-size:clamp(1.6rem,3.5vw,2.2rem);font-weight:850;letter-spacing:-.02em}
 .voice{margin-top:1.6rem;padding:.85rem 1.1rem;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--sunken);max-width:44rem}
+.speech-status{max-width:44rem;margin:.7rem 0 0;padding:.7rem 1rem;border:1px solid var(--gold);border-radius:var(--r-sm);color:var(--gold);background:var(--sunken);font-weight:700}
 
 /* panels */
 main>section{margin-bottom:clamp(3rem,7vw,5rem)}

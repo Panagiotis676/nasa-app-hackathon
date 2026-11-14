@@ -41,6 +41,7 @@
 <div><dt>To install</dt><dd>Nothing</dd></div>
 </dl>
 <label class="check voice"><input type="checkbox" id="speech" checked> <span>Speak descriptions with the built-in voice <span class="m">(turn this off if you use a screen reader)</span></span></label>
+<p id="speechStatus" class="speech-status" role="status" hidden></p>
 </section>
 
 <section id="player" class="wrap panel console" aria-labelledby="hp">
@@ -71,7 +72,7 @@
 <div id="timeline" class="timeline" role="group" aria-label="Jump to a frame"></div>
 
 <div class="transport" role="group" aria-label="Playback controls">
-<button id="play" class="btn-play" data-state="paused">Play</button><button id="prev" class="ico ico-prev">Previous frame</button><button id="next" class="ico ico-next">Next frame</button><button id="replay" class="ico ico-replay">Replay frame</button><button id="desc" class="ico ico-desc">Describe frame</button><button id="leg" class="ico ico-help">How to listen</button><!-- Chrysanthos: Explore mode on/off (same as the E key) --><button id="explore" type="button" class="ico ico-explore" aria-pressed="false">Explore the map</button></div>
+<button id="play" class="btn-play" data-state="paused">Play</button><button id="prev" class="ico ico-prev">Previous frame</button><button id="next" class="ico ico-next">Next frame</button><button id="replay" class="ico ico-replay">Replay frame</button><button id="desc" class="ico ico-desc">Describe frame</button><button id="stopSpeech" type="button">Stop</button><button id="leg" class="ico ico-help">How to listen</button><!-- Chrysanthos: Explore mode on/off (same as the E key) --><button id="explore" type="button" class="ico ico-explore" aria-pressed="false">Explore the map</button></div>
 <div class="row settings">
 <label class="inline">Speed <select id="speed"><option value="14">Slow, 14 seconds per frame</option><option value="8" selected>Normal, 8 seconds per frame</option><option value="4">Fast, 4 seconds per frame</option></select></label>
 <label class="check inline"><input type="checkbox" id="loop"> Loop</label>
@@ -169,5 +170,5 @@
 <p class="m disclaimer">This is an independent project, not an official NASA product.</p>
 </footer>
 <!-- Chrysanthos: preset data, built by tools/build_nightlights.py. If it's missing the page falls back to the demo -->
-<script src="data/nightlights.js?v=20261114-10"></script>
-<script id="appJs" src="js/app.js?v=20261114-10"></script></body></html>
+<script src="data/nightlights.js?v=20261114-11"></script>
+<script id="appJs" src="js/app.js?v=20261114-11"></script></body></html>

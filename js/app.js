@@ -5,7 +5,7 @@ const HEX={diverging:['#2166ac','#67a9cf','#f7f7f7','#ef8a62','#b2182b'],viridis
 let S,frames=[],uploaded=[],mode='demo',fIdx=0,pos=0,playing=false,timer,last,ac,master,pan,voices=[];
 // Chrysanthos: sources = the {name, img} list being played (a preset or your uploads), customLut = colours from an uploaded colorbar,
 // preset = the NASA preset in use (or null), booting = stay quiet while the page first loads
-let sources=[],customLut=null,preset=null,booting=true;
+let sources=[],customLut=null,preset=null,booting=true,descriptions={};
 // Chrysanthos: view = 'frames' (play every frame) or 'change' (one sweep of last minus first frame), downVoices = the low buzz for "went down"
 let view='frames',downVoices=[];
 // Chrysanthos: Explore mode state, the cursor is kept in degrees so it stays put when the frame or the view changes
@@ -26,11 +26,30 @@ const pct=(d,base)=>{if(!(S.vmin>=0&&base>0))return'';const p=Math.abs(100*d/bas
 // Panagiotis: Describe (isDescribe) pauses the sound so the description can be heard.
 // Chrysanthos: other announcements (like the year when a new frame starts) are spoken again while playing, otherwise
 // someone who can't see the screen doesn't know which year they're hearing.
+function setSpeechStatus(text){
+ const el=$('speechStatus');if(!el)return;
+ el.textContent=text;el.hidden=!text;
+ if(text)$('live').textContent=text;
+}
+function englishVoice(){
+ const voices=speechSynthesis.getVoices(),exact=voices.find(v=>v.lang.toLowerCase()==='en-us');
+ return exact||voices.find(v=>v.lang.toLowerCase().startsWith('en-'))||voices.find(v=>v.lang.toLowerCase()==='en');
+}
+function speakEnglish(t){
+ if(!('speechSynthesis' in window)){setSpeechStatus('English speech is not supported by this browser.');return false;}
+ speechSynthesis.cancel();
+ const voice=englishVoice();
+ if(!voice){setSpeechStatus('No English voice is available. Install or enable an English system voice to hear descriptions.');return false;}
+ setSpeechStatus('');
+ const m=new SpeechSynthesisUtterance(t);m.lang='en-US';m.voice=voice;speechSynthesis.speak(m);return true;
+}
+if('speechSynthesis' in window)speechSynthesis.addEventListener('voiceschanged',()=>{if(englishVoice())setSpeechStatus('');});
 function announce(t,isDescribe=false){
   if(booting)return;
   if(isDescribe&&playing)pauseSonifyOnly();
-  if($('speech').checked&&'speechSynthesis' in window){speechSynthesis.cancel();const m=new SpeechSynthesisUtterance(t);m.lang='en';speechSynthesis.speak(m);}
-  else{$('live').textContent='';setTimeout(()=>{$('live').textContent=t},60);}
+  if('speechSynthesis' in window)speechSynthesis.cancel();
+  if($('speech').checked)speakEnglish(t);
+  else{setSpeechStatus('');$('live').textContent='';setTimeout(()=>{$('live').textContent=t},60);}
 }
 // Tell mouse users what an interactive control will do before they click it.
 // The same delegated listener also covers timeline and upload buttons created later.
@@ -52,18 +71,13 @@ function hoverLabel(el){
  const name=text||value||'this control';
  const disabled=el.disabled||el.getAttribute('aria-disabled')==='true'?' Disabled.':'';
  const en=kind+': '+name+'. '+action+' it.'+disabled;
- const gr={Link:'Σύνδεσμος',Menu:'Μενού',Section:'Ενότητα',Checkbox:'Κουτάκι επιλογής','File picker':'Επιλογή αρχείων','Volume control':'Έλεγχος έντασης','Text field':'Πεδίο κειμένου',Image:'Εικόνα',Control:'Χειριστήριο'}[kind]||'Χειριστήριο';
- const ga={Open:'Άνοιξέ τον.','Choose from':'Διάλεξε από αυτό.','Open or close':'Άνοιξέ την ή κλείσ’ την.',Toggle:'Ενεργοποίησέ το ή απενεργοποίησέ το.',Edit:'Επεξεργάσου το.',View:'Δες την.',Activate:'Πάτησέ το.'}[action]||'Πάτησέ το.';
- return {en,el:gr+': '+name+'. '+ga+disabled};
+ return {en};
 }
 // Chrysanthos: hover speech only while Explore is on, otherwise just moving the mouse around the page kept talking.
 // Not over the map itself: in Explore the map plays its own note under the mouse.
 function announceHover(el){
  if(booting||!exploring||el.id==='cv'||!$('speech').checked||!('speechSynthesis' in window))return;
- const msg=hoverLabel(el);speechSynthesis.cancel();
- const en=new SpeechSynthesisUtterance(msg.en);en.lang='en-US';
- const elGR=new SpeechSynthesisUtterance(msg.el);elGR.lang='el-GR';
- speechSynthesis.speak(en);speechSynthesis.speak(elGR);
+ const msg=hoverLabel(el);speakEnglish(msg.en);
 }
 document.addEventListener('mouseover',e=>{
  const el=e.target&&e.target.closest?e.target.closest('a,button,select,input,summary,[role="button"],[role="link"],[role="slider"],[role="img"]'):null;
@@ -83,11 +97,19 @@ function demoFrames(){const out=[],s=[.2,.9,1.8,2.6,1.6,.4];for(let t=0;t<6;t++)
 const f=mkFrame('Demo month '+(t+1)+' of 6, synthetic',W,H,v,null);f.disp=dispFromVals(f);out.push(f);}return out;}
 // Chrysanthos: "near India (23 degrees north, 78 degrees east)" instead of only the numbers. Uses the same REGIONS list as the change mode.
 const where=(la,lo)=>{const c=Math.abs(la).toFixed(0)+' degrees '+(la>=0?'north':'south')+', '+Math.abs(lo).toFixed(0)+' degrees '+(lo>=0?'east':'west'),p=placeAt(la,lo);return p?p+' ('+c+')':c;};
-function describe(f,i){if(f.change)return describeChange(f);const s=f.st;if(!s.n)return'Frame '+(i+1)+': no readable data. Check the colormap, range and tolerance.';const x=s.mi%f.W,y=Math.floor(s.mi/f.W),la=S.lat1-y/Math.max(f.H-1,1)*(S.lat1-S.lat0),lo=S.lon0+x/Math.max(f.W-1,1)*(S.lon1-S.lon0),q=fmt;
+function frameDescription(f,i){
+ const id=preset&&preset.id||$('preset').value,items=descriptions[id];
+ return f.change?descriptions.change&&descriptions.change[id]||'':Array.isArray(items)?items[i]||'':'';
+}
+function describe(f,i){const written=frameDescription(f,i);if(written)return written;if(f.change)return describeChange(f);const s=f.st;if(!s.n)return'Frame '+(i+1)+': no readable data. Check the colormap, range and tolerance.';const x=s.mi%f.W,y=Math.floor(s.mi/f.W),la=S.lat1-y/Math.max(f.H-1,1)*(S.lat1-S.lat0),lo=S.lon0+x/Math.max(f.W-1,1)*(S.lon1-S.lon0),q=fmt;
 let t='Frame '+(i+1)+' of '+frames.length+', '+f.name+'. Data covers '+Math.round(100*s.n/(f.W*f.H))+' percent of the map. The average is '+q(s.mean)+u()+', ranging from '+q(s.mn)+' to '+q(s.mx)+u()+'. The highest value is near '+where(la,lo)+'. The northern half averages '+q(s.north)+u()+' and the southern half '+q(s.south)+u()+'.';
 const p=frames[i-1];if(p&&p.st.n)t+=' Compared with the previous frame, the average changed by '+(s.mean-p.st.mean>=0?'plus ':'minus ')+q(Math.abs(s.mean-p.st.mean))+u()+pct(s.mean-p.st.mean,p.st.mean)+'.';
 // Chrysanthos: the big picture too, change since the first frame (e.g. 2012 to 2023)
 const f0=frames[0];if(i>1&&f0.st.n)t+=' Since the first frame, '+f0.name+', it changed by '+(s.mean-f0.st.mean>=0?'plus ':'minus ')+q(Math.abs(s.mean-f0.st.mean))+u()+pct(s.mean-f0.st.mean,f0.st.mean)+'.';return t;}
+async function loadDescriptions(){
+ try{const r=await fetch('data/descriptions.json');if(!r.ok)throw new Error('descriptions.json');descriptions=await r.json();}
+ catch(_err){descriptions={};}
+}
 // ---------------------------------------------------------------------------------------------
 // Chrysanthos: "hear the change" mode. Instead of playing every frame one after another, play ONE
 // sweep of (last frame minus first frame): a bright high tone where the value went up, a low buzz
@@ -451,7 +473,7 @@ const exHelp=()=>'Explore mode. The arrow keys move around the map, '+exStep()+'
  (frames[fIdx]&&frames[fIdx].change?'a clean tone where it went up and a low buzz where it went down':'louder for a higher value')+'. A soft click means no data. Enter says the place and the value. N and P still change the frame. Press E or Escape to leave.';
 function setExplore(on,quiet){if(on===exploring)return;if(on&&!frames.length){announce('Add frames first.');return;}
  exploring=on;$('explore').setAttribute('aria-pressed',String(on));$('cv').classList.toggle('exploring',on);
- if(on){pause();[exLat,exLon]=exLat===null?exClamp((S.lat0+S.lat1)/2,(S.lon0+S.lon1)/2):exClamp(exLat,exLon);draw();if(!quiet)say(exHelp());}
+ if(on){pause();[exLat,exLon]=exLat===null?exClamp((S.lat0+S.lat1)/2,(S.lon0+S.lon1)/2):exClamp(exLat,exLon);draw();if(!quiet)say(frameDescription(frames[fIdx],fIdx)||'No pre-written description is available for this uploaded map.');}
  else{exDrag=false;clearTimeout(exTm);draw();if(!quiet)announce('Explore mode off. The arrow keys change the frame again.');}}
 function exSpeak(){const f=frames[fIdx];if(!f)return;const v=exAvg(f.vals,f.W,f.H,exLat,exLon),pl=placeAt(exLat,exLon),ns=Math.round(exLat),ew=Math.round(exLon);
  let t=(pl?pl+', ':'')+Math.abs(ns)+' degrees '+(ns>=0?'north':'south')+', '+Math.abs(ew)+' '+(ew>=0?'east':'west')+': ';
@@ -463,6 +485,7 @@ function exSpeak(){const f=frames[fIdx];if(!f)return;const v=exAvg(f.vals,f.W,f.
  say(t);}
 const exPoint=e=>{const r=$('cv').getBoundingClientRect();return[S.lat1-(e.clientY-r.top)/r.height*(S.lat1-S.lat0),S.lon0+(e.clientX-r.left)/r.width*(S.lon1-S.lon0)];};
 $('explore').onclick=()=>setExplore(!exploring);
+$('stopSpeech').onclick=()=>{if('speechSynthesis' in window)speechSynthesis.cancel();setSpeechStatus('');$('live').textContent='';};
 // a click or a tap on the map jumps there (and turns Explore on), dragging a finger keeps playing as it moves
 $('cv').addEventListener('pointerdown',e=>{if(!frames.length)return;if(!exploring)setExplore(true);exDrag=true;try{$('cv').setPointerCapture(e.pointerId);}catch(_err){/* not supported */}exGo(...exPoint(e));});
 // in Explore a mouse plays just by moving over the map, no click needed (a finger has to touch, so that one needs exDrag)
@@ -491,5 +514,7 @@ setDetectBadge('off','waiting for images.');
 setAutoStatus('Auto colorbar detection is idle.');
 // Chrysanthos: open on the real NASA night lights. The made-up demo is no longer in the menu, it only shows up if the
 // NASA data file can't be loaded, so the page is never empty.
-if(window.EJ_PRESETS&&window.EJ_PRESETS.nightlights){$('preset').value='nightlights';usePreset('nightlights').finally(()=>{booting=false;});}
-else{$('preset').querySelector('[value=nightlights]').disabled=true;$('intro').textContent='The NASA data file (data/nightlights.js) could not be loaded, so this is a made-up demo map, not real data. You can still add your own maps below.';booting=false;}
+loadDescriptions().finally(()=>{
+ if(window.EJ_PRESETS&&window.EJ_PRESETS.nightlights){$('preset').value='nightlights';usePreset('nightlights').finally(()=>{booting=false;});}
+ else{$('preset').querySelector('[value=nightlights]').disabled=true;$('intro').textContent='The NASA data file (data/nightlights.js) could not be loaded, so this is a made-up demo map, not real data. You can still add your own maps below.';booting=false;}
+});
