@@ -2,7 +2,27 @@
 
 **Author:** Chrysanthos
 **Date:** 11 November 2026
-**Status:** Draft proposal — for team discussion, nothing here is final.
+**Status:** Early proposal from 11 November. The team went with a slightly different design; what was actually built is summarised right below and described in the [README](README.md).
+
+---
+
+## What we built compared to this plan (14 November)
+
+| Plan | Status | What we did |
+|---|---|---|
+| Colour → real data value (colormap or colorbar) | ✅ Built | Named colormaps, an uploaded colorbar, or a colorbar detected automatically inside the frames. Brightness for maps without one (night lights). |
+| "Change is the story" (Timeline mode) | ✅ Built, differently | Every frame plays as a west → east sweep; a rising or falling chime marks each change. Plus a mode the plan didn't have: **only what changed** (last frame minus first, in one sweep). |
+| Pitch = value | 🔄 Changed | Pitch = latitude (north high, south low) and **loudness = value**, on a pentatonic scale. It tells you *where* things are, not only how much. |
+| Stereo pan west → east | ✅ Built | |
+| Written description + audio legend | ✅ Built | Spoken and written descriptions with numbers, percentages and place names; a spoken listening guide (L). |
+| Keyboard and screen reader first | ✅ Built | Every control works from the keyboard (also with a Greek layout), `?` reads all shortcuts, `+`/`-` change the speed, `aria-live` announcements, visible focus, high contrast, phone layout. |
+| Export to WAV | ✅ Built | The "Download sound" button. |
+| GitHub Pages | ✅ Built | https://panagiotis676.github.io/nasa-app-hackathon/ |
+| Python pipeline → JSON track files | 🔄 Changed | No JSON step: the browser decodes the images itself. Python builds the ready-made maps (`tools/`) and has its own command-line version (`image_describer.py`). |
+| Tone.js | 🔄 Changed | Plain Web Audio API, nothing to load. |
+| Explore mode (arrow-key cursor, vibration) | ❌ Not built | The biggest idea left for later. |
+| Orchestra mode (land-cover instruments) | ❌ Not built | We focused on data maps instead of true-colour photos. |
+| 2–3 EIC visualizations | ❌ One so far | NASA night lights 2012–2023. Any other map can be loaded under "Your maps". |
 
 ---
 

@@ -355,14 +355,20 @@ async function downloadSound(){
  finally{btn.disabled=false;btn.textContent='Download sound';}}
 $('dl').addEventListener('click',downloadSound);
 $('vol').addEventListener('input',()=>{if(master)master.gain.value=+$('vol').value;});
-document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const t=e.target.tagName;if(t==='INPUT'||t==='SELECT'||t==='TEXTAREA')return;const k=e.key.toLowerCase();
+// Chrysanthos: + and - change the speed, ? reads all the shortcuts (both were in the plan in ARCHITECTURE.md)
+const SHORTCUTS='Keyboard shortcuts. Space: play or pause. Right arrow or N: next frame. Left arrow or P: previous frame. R: replay the frame. D: describe the frame. L: how to listen. C: switch between every frame and only what changed. Plus or minus: faster or slower. Question mark: read these shortcuts again.';
+function changeSpeed(d){const s=$('speed'),i=s.selectedIndex+d;if(i<0||i>=s.options.length){announce(d>0?'This is already the fastest speed.':'This is already the slowest speed.');return;}s.selectedIndex=i;announce('Speed: '+s.options[i].text+'.');}
+// Chrysanthos: letters are read from the key's position when the layout isn't Latin, so D, L, C... also work with a Greek keyboard (it types δ, λ, ψ)
+document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const t=e.target.tagName;if(t==='INPUT'||t==='SELECT'||t==='TEXTAREA')return;let k=e.key.toLowerCase();if(k.length===1&&!/[a-z0-9 ?+\-=_]/.test(k)&&/^Key[A-Z]$/.test(e.code||''))k=e.code.slice(3).toLowerCase();if(e.code==='Slash'&&e.shiftKey)k='?';
 if(k===' '){if(t==='BUTTON'||t==='SUMMARY'||t==='A')return;e.preventDefault();toggle();}
 else if(k==='arrowright'||k==='n'){e.preventDefault();step(1);}else if(k==='arrowleft'||k==='p'){e.preventDefault();step(-1);}
-else if(k==='r')replay();else if(k==='d')describeNow();else if(k==='l')say(legendText());else if(k==='c')setView(view==='change'?'frames':'change');});
+else if(k==='r')replay();else if(k==='d')describeNow();else if(k==='l')say(legendText());else if(k==='c')setView(view==='change'?'frames':'change');
+else if(k==='+'||k==='='){e.preventDefault();changeSpeed(1);}else if(k==='-'||k==='_'){e.preventDefault();changeSpeed(-1);}else if(k==='?'){e.preventDefault();say(SHORTCUTS);}});
 setDemo();S=readS();frames=demoFrames();draw();updStatus();
 renderUploadList();
 setDetectBadge('off','waiting for images.');
 setAutoStatus('Auto colorbar detection is idle.');
-// Chrysanthos: open on the real NASA night lights if the data file is there, otherwise stay on the demo like before
+// Chrysanthos: open on the real NASA night lights. The made-up demo is no longer in the menu, it only shows up if the
+// NASA data file can't be loaded, so the page is never empty.
 if(window.EJ_PRESETS&&window.EJ_PRESETS.nightlights){$('preset').value='nightlights';usePreset('nightlights').finally(()=>{booting=false;});}
-else{$('preset').querySelector('[value=nightlights]').disabled=true;$('preset').value='demo';booting=false;}
+else{$('preset').querySelector('[value=nightlights]').disabled=true;$('intro').textContent='The NASA data file (data/nightlights.js) could not be loaded, so this is a made-up demo map, not real data. You can still add your own maps below.';booting=false;}
