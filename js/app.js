@@ -30,6 +30,44 @@ function announce(t,isDescribe=false){
   if($('speech').checked&&'speechSynthesis' in window){speechSynthesis.cancel();const m=new SpeechSynthesisUtterance(t);m.lang='en';speechSynthesis.speak(m);}
   else{$('live').textContent='';setTimeout(()=>{$('live').textContent=t},60);}
 }
+// Tell mouse users what an interactive control will do before they click it.
+// The same delegated listener also covers timeline and upload buttons created later.
+let hoverTarget=null;
+function hoverLabel(el){
+ const tag=el.tagName.toLowerCase(),type=(el.getAttribute('type')||'').toLowerCase();
+ const label=el.closest('label')||(el.id&&Array.prototype.find.call(document.querySelectorAll('label'),x=>x.htmlFor===el.id));
+ const text=(el.getAttribute('aria-label')||(tag==='select'&&el.selectedOptions.length?el.selectedOptions[0].textContent:label?label.textContent:el.textContent)||'').replace(/\s+/g,' ').trim();
+ let kind='Control',action='Activate';
+ if(tag==='a'){kind='Link';action='Open';}
+ else if(tag==='select'){kind='Menu';action='Choose from';}
+ else if(tag==='summary'){kind='Section';action='Open or close';}
+ else if(tag==='input'){
+   kind=type==='file'?'File picker':type==='range'?'Volume control':type==='checkbox'?'Checkbox':'Text field';
+   action=type==='checkbox'?'Toggle':'Edit';
+ }
+ else if(el.getAttribute('role')==='img'){kind='Image';action='View';}
+ const value=tag==='select'&&el.selectedOptions.length?' '+el.selectedOptions[0].textContent.trim():'';
+ const name=text||value||'this control';
+ const disabled=el.disabled||el.getAttribute('aria-disabled')==='true'?' Disabled.':'';
+ const en=kind+': '+name+'. '+action+' it.'+disabled;
+ const gr={Link:'Σύνδεσμος',Menu:'Μενού',Section:'Ενότητα',Checkbox:'Κουτάκι επιλογής','File picker':'Επιλογή αρχείων','Volume control':'Έλεγχος έντασης','Text field':'Πεδίο κειμένου',Image:'Εικόνα',Control:'Χειριστήριο'}[kind]||'Χειριστήριο';
+ const ga={Open:'Άνοιξέ τον.','Choose from':'Διάλεξε από αυτό.','Open or close':'Άνοιξέ την ή κλείσ’ την.',Toggle:'Ενεργοποίησέ το ή απενεργοποίησέ το.',Edit:'Επεξεργάσου το.',View:'Δες την.',Activate:'Πάτησέ το.'}[action]||'Πάτησέ το.';
+ return {en,el:gr+': '+name+'. '+ga+disabled};
+}
+function announceHover(el){
+ if(booting||!$('speech').checked||!('speechSynthesis' in window))return;
+ const msg=hoverLabel(el);speechSynthesis.cancel();
+ const en=new SpeechSynthesisUtterance(msg.en);en.lang='en-US';
+ const elGR=new SpeechSynthesisUtterance(msg.el);elGR.lang='el-GR';
+ speechSynthesis.speak(en);speechSynthesis.speak(elGR);
+}
+document.addEventListener('mouseover',e=>{
+ const el=e.target&&e.target.closest?e.target.closest('a,button,select,input,summary,[role="button"],[role="link"],[role="slider"],[role="img"]'):null;
+ if(el&&el!==hoverTarget){hoverTarget=el;announceHover(el);}
+});
+document.addEventListener('mouseout',e=>{
+ if(hoverTarget&&e.target===hoverTarget&&!hoverTarget.contains(e.relatedTarget))hoverTarget=null;
+});
 function say(t){$('dtxt').textContent=t;$('cv').setAttribute('aria-label','Earth map frame. '+t);announce(t,true);}
 function decode(raw){const d=raw.data,n=raw.width*raw.height,v=new Float32Array(n),t2=S.tol*S.tol,L=S.lut;for(let i=0;i<n;i++){const r=d[4*i],g=d[4*i+1],b=d[4*i+2];if(d[4*i+3]<128){v[i]=NaN;continue;}if(!L){v[i]=(.2126*r+.7152*g+.0722*b)/255;continue;}let best=1e9,bi=0;for(let k=0;k<256;k++){const c=L[k],e=(r-c[0])**2+(g-c[1])**2+(b-c[2])**2;if(e<best){best=e;bi=k;}}v[i]=best<=t2?S.vmin+(S.vmax-S.vmin)*bi/255:NaN;}return v;}
 function mkFrame(name,W,H,vals,disp){const B=12,f={name,W,H,vals,disp,B:new Float32Array(B*W)},e=[];for(let i=0;i<=B;i++)e.push(Math.round(i*H/B));let n=0,sum=0,mn=Infinity,mx=-Infinity,mi=0,nN=0,sN=0,nS=0,sS=0;
@@ -195,8 +233,7 @@ const cov=frames.reduce((a,f)=>a+f.st.n/(f.W*f.H),0)/frames.length,f0=frames[0];
 announce(pre+note+(cov<.05?'Loaded '+frames.length+' frames, but very few pixels matched the colormap. Check the colormap, range and tolerance.':f0.change?'Ready to hear what changed from '+f0.from.name+' to '+f0.to.name+'. '+changeHow()+' Press Play to listen.':'Loaded '+frames.length+' frames. Press Play to listen.'));}
 function setView(v){view=v;$('view').value=v;fIdx=0;rebuild();}
 function setDemo(){$('cmap').value='diverging';$('vmin').value=-3;$('vmax').value=3;$('units').value='°C anomaly';mode='demo';preset=null;$('intro').textContent='Made-up data, not from NASA: six months of a pretend ocean temperature anomaly, with a warm patch in the Pacific that grows and then fades.';}
-const isPngOrJpeg=f=>{const ext=f.name.toLowerCase().match(/\.[^.]+$/)?.[0],byName=ext==='.png'||ext==='.jpg'||ext==='.jpeg',byType=f.type==='image/png'||f.type==='image/jpeg';return byName&&(!f.type||byType);};
-const loadImg=f=>new Promise((ok,no)=>{if(!isPngOrJpeg(f)){no(new Error(`${f.name} is not a PNG or JPEG image`));return;}const url=URL.createObjectURL(f),i=new Image();i.onload=()=>{URL.revokeObjectURL(url);ok(i);};i.onerror=()=>{URL.revokeObjectURL(url);no(new Error(f.name));};i.src=url;});
+const loadImg=f=>new Promise((ok,no)=>{const url=URL.createObjectURL(f),i=new Image();i.onload=()=>{URL.revokeObjectURL(url);ok(i);};i.onerror=()=>no(new Error(f.name));i.src=url;});
 const loadURL=(url,name)=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>no(new Error(name));i.src=url;});
 const fileKey=f=>`${f.name}::${f.size}::${f.lastModified}`;
 const itemKey=x=>x.id||x.name;
