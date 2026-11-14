@@ -51,7 +51,7 @@
 </div>
 <!-- Chrysanthos: ready-made maps, so you can hear real NASA data without having to see the map to set it up -->
 <div class="grid g2">
-<label class="field">Choose a map <select id="preset"><option value="nightlights">NASA: Earth's night lights, 2012 to 2023</option><option value="example">NASA: air pollution over New York, before and during the 2020 lockdown</option><option value="upload" disabled>Your own images (use “Add your own maps”)</option></select></label>
+<label class="field">Choose a map <select id="preset"><option value="nightlights">NASA: Earth's night lights, 2012 to 2023</option><option value="example">NASA: air pollution over New York, before and during the 2020 lockdown</option><option value="forest-height">NASA: Global forest height (GEDI)</option><option value="aerosols">NASA: Global aerosols (GEOS)</option><option value="ocean-temperature">NASA: Perpetual Ocean 2 temperature</option><option value="nightlights-change">NASA: Night lights change, 2012 to 2023</option><option value="lightning">NASA: Lightning seen from the ISS</option><option value="carbon-dioxide">NASA: Carbon dioxide (DYAMOND)</option><option value="sea-surface-temperature">NASA: Global sea surface temperature (ECCO2)</option><option value="upload" disabled>Your own images (use “Add your own maps”)</option></select></label>
 <!-- Chrysanthos: "hear the change" mode, one sweep of last minus first frame. See mkChange() in js/app.js -->
 <label class="field">Listen to <select id="view"><option value="frames">Every frame, one after another</option><option value="change">Only what changed, first to last frame</option></select></label>
 </div>
@@ -172,7 +172,7 @@
 <footer class="wrap footer">
 <div class="foot-grid">
 <div><p class="brand-foot">Earth Jukebox</p><p class="m">Made for the NASA Space Apps Challenge 2026, “The Earth Information Jukebox”, by Chrysanthos Spyrou, Panayiotis Agathangelou and Chara Charalambous.</p></div>
-<div><p class="foot-h">Data</p><p class="m">Night lights: NASA Black Marble, <a href="https://svs.gsfc.nasa.gov/5276/">NASA Scientific Visualization Studio</a>. Air pollution example: NASA satellite images of nitrogen dioxide (NO₂) over the north-eastern United States, March 2015–19 average and March 2020.</p></div>
+<div><p class="foot-h">Data</p><p class="m">Night lights: NASA Black Marble, <a href="https://svs.gsfc.nasa.gov/5276/">NASA Scientific Visualization Studio</a>. Air pollution example: NASA satellite images of nitrogen dioxide (NO₂) over the north-eastern United States, March 2015–19 average and March 2020. Additional NASA maps: <a href="https://svs.gsfc.nasa.gov/4950/">forest height</a>, <a href="https://svs.gsfc.nasa.gov/5669/">aerosols</a>, <a href="https://svs.gsfc.nasa.gov/5425/">ocean temperature</a>, <a href="https://svs.gsfc.nasa.gov/5313/">night-light change</a>, <a href="https://svs.gsfc.nasa.gov/5011/">lightning</a>, <a href="https://svs.gsfc.nasa.gov/5196/">carbon dioxide</a>, and <a href="https://svs.gsfc.nasa.gov/3912/">sea surface temperature</a>.</p></div>
 <div><p class="foot-h">Code</p><p class="m"><a href="https://github.com/Panagiotis676/nasa-app-hackathon">Source on GitHub</a>. No accounts, no tracking, your images stay in your browser.</p></div>
 </div>
 <p class="m disclaimer">This is an independent project, not an official NASA product.</p>
@@ -180,4 +180,5 @@
 <!-- Chrysanthos: preset data, built by tools/build_nightlights.py. If it's missing the page falls back to the demo -->
 <script src="data/nightlights.js?v=20261114-13"></script>
 <script src="data/descriptions.js?v=20261114-13"></script>
+<script src="data/presets.js?v=20261114-13"></script>
 <script id="appJs" src="js/app.js?v=20261114-13"></script></body></html>

@@ -204,13 +204,15 @@ function setMeter(f,col){if(!meterBars){const m=$('meter');meterBars=[];for(let 
  for(let b=0;b<12;b++){const k=f?b*f.W+col:0,st=meterBars[b].style;if(!st||!st.setProperty)continue;st.setProperty('--u',f?Math.sqrt(f.B[k]).toFixed(3):0);st.setProperty('--d',f&&f.change?Math.sqrt(f.Bd[k]).toFixed(3):0);}} // sqrt: only to make quiet bands visible
 function setLon(){const lo=S.lon0+Math.min(1,pos)*(S.lon1-S.lon0);$('tmLon').textContent='Lon '+Math.abs(lo).toFixed(0)+'° '+(lo>=0?'E':'W');}
 let tlKey='';
+function updateFrameControls(single){$('timeline').hidden=single;$('prev').hidden=single;$('next').hidden=single;}
 function renderTimeline(){const t=$('timeline'),key=frames.map(f=>f.name).join('|');
+ updateFrameControls(frames.length===1);
  if(key!==tlKey){tlKey=key;t.textContent='';frames.forEach((f,i)=>{const b=document.createElement('button');b.type='button';b.textContent=f.change?f.from.name+' → '+f.to.name:f.name;
   b.setAttribute('aria-label',f.change?f.name:'Frame '+(i+1)+', '+f.name);b.onclick=()=>{if(i!==fIdx||!playing)goTo(i);};t.appendChild(b);});}
  // only the current frame's button is in the Tab order, so keyboard users reach Play quickly (arrows, N and P move between frames)
  Array.prototype.forEach.call(t.children||[],(b,i)=>{b.setAttribute('aria-current',i===fIdx?'true':'false');b.tabIndex=i===fIdx?0:-1;});}
 function draw(){const f=frames[fIdx];if(!f)return;const c=$('cv'),x=c.getContext('2d');if(c.width!==f.disp.width||c.height!==f.disp.height){c.width=f.disp.width;c.height=f.disp.height;}x.drawImage(f.disp,0,0);if(exploring){drawCursor(x,c);return;}const px=pos*c.width,w=Math.max(3,c.width/120);x.fillStyle='#000';x.fillRect(px-w,0,2*w,c.height);x.fillStyle='#ffe600';x.fillRect(px-w/2,0,w,c.height);setLon();}
-const updStatus=()=>{const f=frames[fIdx];$('tmMode').textContent=f&&f.change?'Change mode':'Every frame';renderTimeline();$('status').textContent=!f?'No frames loaded.':f.change?f.name:'Frame '+(fIdx+1)+' of '+frames.length+': '+f.name;mapLabel('');};
+const updStatus=()=>{const f=frames[fIdx];$('tmMode').textContent=f&&f.change?'Change mode':'Every frame';renderTimeline();$('status').textContent=!f?'No frames loaded.':f.change?f.name:frames.length===1?f.name:'Frame '+(fIdx+1)+' of '+frames.length+': '+f.name;mapLabel('');};
 const hz=i=>440*2**((48+12*Math.floor(i/5)+[0,2,4,7,9][i%5]-69)/12);
 function initAudio(){if(ac)return;ac=new(window.AudioContext||window.webkitAudioContext)();master=ac.createGain();master.gain.value=+$('vol').value;const comp=ac.createDynamicsCompressor(),bus=ac.createGain();pan=ac.createStereoPanner?ac.createStereoPanner():null;if(pan){bus.connect(pan);pan.connect(comp);}else bus.connect(comp);comp.connect(master);master.connect(ac.destination);
 for(let b=0;b<12;b++){const f=hz(11-b),g=ac.createGain(),g2=ac.createGain(),o1=ac.createOscillator(),o2=ac.createOscillator();g.gain.value=0;g2.gain.value=.3;o1.frequency.value=f;o2.frequency.value=2*f;o1.connect(g);o2.connect(g2);g2.connect(g);g.connect(bus);o1.start();o2.start();voices.push(g);}
@@ -278,6 +280,16 @@ const setDetectBadge=(kind,text)=>{const el=$('cmapDetect');if(!el)return;el.cla
 function renderUploadList(){const ul=$('uploadList');ul.textContent='';if(!uploaded.length){const li=document.createElement('li');li.className='empty';li.textContent='No images added yet.';ul.appendChild(li);}else uploaded.forEach((it,i)=>{const li=document.createElement('li'),nm=document.createElement('span'),btn=document.createElement('button');nm.className='name';nm.textContent=(i+1)+'. '+it.name;btn.type='button';btn.className='subtle';btn.dataset.remove=itemKey(it);btn.textContent='Remove';li.appendChild(nm);li.appendChild(btn);ul.appendChild(li);});$('clearUploads').disabled=!uploaded.length;$('uploadHint').textContent=uploaded.length?`${uploaded.length} frame${uploaded.length===1?'':'s'} loaded.`:'You can add more at any time, they are kept in order by file name.';}
 
 function makeCustomLutFromLine(line){const len=line.length||1;customLut=[];for(let k=0;k<256;k++)customLut.push(line[Math.round(k*(len-1)/255)]);$('cmap').querySelector('[value=custom]').disabled=false;}
+function colorbarLine(im,crop){
+ const c=document.createElement('canvas'),s=Math.min(1,1024/Math.max(im.width,im.height));
+ c.width=Math.max(1,Math.round(im.width*s));c.height=Math.max(1,Math.round(im.height*s));
+ const x=c.getContext('2d');x.drawImage(im,0,0,c.width,c.height);
+ const left=Math.round(c.width*(crop&&crop.l||0)/100),top=Math.round(c.height*(crop&&crop.t||0)/100);
+ const right=Math.round(c.width*(crop&&crop.r||0)/100),bottom=Math.round(c.height*(crop&&crop.b||0)/100);
+ const d=x.getImageData(left,top,Math.max(1,c.width-left-right),Math.max(1,c.height-top-bottom)).data,W=c.width-left-right,H=c.height-top-bottom,wide=W>=H,len=wide?W:H,th=wide?H:W,line=[];
+ for(let i=0;i<len;i++){let r=0,g=0,b=0;for(let j=0;j<th;j++){const o=4*(wide?j*W+i:i*W+j);r+=d[o];g+=d[o+1];b+=d[o+2];}line.push([r/th,g/th,b/th]);}
+ if(!wide)line.reverse();return line;
+}
 
 function detectEmbeddedColorbar(im){
   const c=document.createElement('canvas'),s=Math.min(1,640/Math.max(im.width,im.height));
@@ -394,8 +406,10 @@ $('status').textContent='Loading '+P.title+'…';
 let imgs;try{imgs=await Promise.all(P.frames.map(f=>loadURL(f.src,f.name)));}catch(err){announce('Could not load '+P.title+'.');return;}
 $('cmap').value=P.cmap;$('vmin').value=P.vmin;$('vmax').value=P.vmax;$('units').value=P.units||'';
 $('lat0').value=P.lat[0];$('lat1').value=P.lat[1];$('lon0').value=P.lon[0];$('lon1').value=P.lon[1];
-['cropT','cropB','cropL','cropR'].forEach(k=>{$(k).value=0;});
-preset=P;sources=P.frames.map((f,i)=>({name:f.name,img:imgs[i]}));mode='images';
+['cropT','cropB','cropL','cropR'].forEach(k=>{$(k).value=P.crop&&P.crop[{cropT:'t',cropB:'b',cropL:'l',cropR:'r'}[k]]||0;});
+preset=P;
+if(P.colorbar){try{const bar=await loadURL(P.colorbar,'colorbar');makeCustomLutFromLine(colorbarLine(bar,P.colorbarCrop));manualCustomLut=true;$('cmap').value='custom';}catch(err){announce('Could not load the colorbar for '+P.title+'.');return;}}else manualCustomLut=false;
+sources=P.frames.map((f,i)=>({name:f.name,img:imgs[i]}));mode='images';
 $('intro').textContent=P.intro+' Source: '+P.source+'.';fIdx=0;rebuild(P.intro);}
 $('preset').addEventListener('change',()=>usePreset($('preset').value));
 $('view').addEventListener('change',()=>setView($('view').value));
