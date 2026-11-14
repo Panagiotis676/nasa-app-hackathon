@@ -1,7 +1,0 @@
-# Opens a PR when a Python package we use has a new version or a security fix.
-version: 2
-updates:
-  - package-ecosystem: pip
-    directory: /
-    schedule:
-      interval: weekly

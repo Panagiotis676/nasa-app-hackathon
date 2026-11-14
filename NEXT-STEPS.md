@@ -146,7 +146,8 @@ spaceappschallenge.org → η σελίδα της ομάδας → **Project**. 
   pixels και έβγαζε π.χ. ψεύτικη πτώση το 2015.
 - Το **Pause** σταματάει και τη φωνή.
 - Νέα λειτουργία **«Only what changed»**.
-- Οργάνωση του repo (`media/`, `prototype/`, `requirements.txt`), `SECURITY.md`, Dependabot.
+- Οργάνωση του repo (`media/`, `prototype/`, `requirements.txt`), `SECURITY.md`. Το Dependabot (αυτόματα PR για νέες
+  εκδόσεις πακέτων) βγήκε, γιατί έκανε μόνο θόρυβο στο hackathon και πρότεινε εκδόσεις που δεν δουλεύουν σε Python 3.9.
 - Repo **public** και **GitHub Pages** ενεργά.
 
 ## Κανόνες για το git (για να μη χαθεί δουλειά)

@@ -49,7 +49,6 @@ prototype/              first prototype: RGB scores and a soundtrack for an ISS 
 requirements.txt        Python packages: pip install -r requirements.txt
 ARCHITECTURE.md         architecture proposal (by Chrysanthos)
 SECURITY.md             how to report a security problem, what happens to your data
-.github/                Dependabot (warns about packages with security fixes)
 ```
 
 ## Getting started
