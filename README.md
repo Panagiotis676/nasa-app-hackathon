@@ -104,7 +104,9 @@ _Under discussion with the team._ The full proposed architecture and plan (by Ch
 
 ## Team
 
-_Add team members here._
+- Chrysanthos Spyrou ([@ichrysanthos](https://github.com/ichrysanthos))
+- Panayiotis Agathangelou ([@Panagiotis676](https://github.com/Panagiotis676))
+- Chara Charalambous ([@Charaxx101](https://github.com/Charaxx101))
 
 ## Credits
 
