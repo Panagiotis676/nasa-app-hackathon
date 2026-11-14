@@ -8,7 +8,7 @@
 <!-- Chrysanthos: everything is local (no web fonts, no trackers), so it also works offline by double-clicking.
      The ?v= number makes browsers fetch the new file after a change (GitHub Pages lets them keep old copies for 10 minutes,
      and new HTML with an old CSS/JS breaks the page). Change the number in all three places when you edit css, js or data. -->
-<link rel="stylesheet" href="css/style.css?v=20261114-9">
+<link rel="stylesheet" href="css/style.css?v=20261114-10">
 </head><body>
 <a class="skip" href="#player">Skip to the player</a>
 <div class="sky" aria-hidden="true"></div>
@@ -18,7 +18,7 @@
 <a class="brand" href="#top" aria-label="Earth Jukebox, back to top">
 <svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="12" class="logo-globe"/><path d="M8 20h24M20 8c5 5 5 19 0 24M20 8c-5 5-5 19 0 24" class="logo-lines"/><path d="M3 20a17 17 0 0 1 4-11M37 20a17 17 0 0 0-4-11M3 20a17 17 0 0 0 4 11M37 20a17 17 0 0 1-4 11" class="logo-waves"/></svg>
 <span>Earth Jukebox</span></a>
-<nav aria-label="Sections"><a href="#player">Player</a><a href="#how">How it works</a><a href="#data">Your maps</a><a href="#keys">Shortcuts</a></nav>
+<nav aria-label="Sections"><a href="#player">Player</a><a href="#data">Your maps</a><a href="#how">How it works</a><a href="#keys">Shortcuts</a></nav>
 </div>
 </header>
 
@@ -27,7 +27,13 @@
 <p class="eyebrow"><span class="pulse" aria-hidden="true"></span>NASA Space Apps Challenge 2026 · The Earth Information Jukebox</p>
 <h1 id="h1">Hear how our <span class="grad">planet changes</span></h1>
 <p class="lead">Earth Jukebox turns NASA Earth maps into sound. Close your eyes and hear where the lights of our cities are, how bright they are, and how they grew from 2012 to 2023. Everything works with a keyboard and a screen reader.</p>
-<div class="cta"><a class="btn btn-primary" href="#player">Start listening</a><a class="btn btn-ghost" href="#how">How it works</a></div>
+<!-- Chrysanthos: three steps for someone who has never seen the page (and for the judges) -->
+<ol class="start" role="list" aria-label="Start here">
+<li><strong>Press “Start listening”</strong> (or Space). The sound sweeps across the map: west in your left ear, east in your right.</li>
+<li><strong>Listen:</strong> higher notes are further north, louder means more light.</li>
+<li><strong>Then try</strong> <kbd>C</kbd> to hear only what changed, <kbd>E</kbd> to explore the map, or add your own NASA maps.</li>
+</ol>
+<div class="cta"><a id="startListen" class="btn btn-primary" href="#player">Start listening</a><a class="btn btn-ghost" href="#how">How it works</a></div>
 <dl class="stats">
 <div><dt>Night lights, 2012 → 2023</dt><dd>+32%</dd></div>
 <div><dt>Years of NASA data</dt><dd>12</dd></div>
@@ -44,10 +50,12 @@
 </div>
 <!-- Chrysanthos: ready-made maps, so you can hear real NASA data without having to see the map to set it up -->
 <div class="grid g2">
-<label class="field">Choose a map <select id="preset"><option value="nightlights">NASA: Earth's night lights, 2012 to 2023</option><option value="upload" disabled>Your own images (add them under Your maps)</option></select></label>
+<label class="field">Choose a map <select id="preset"><option value="nightlights">NASA: Earth's night lights, 2012 to 2023</option><option value="example">NASA: air pollution over New York, before and during the 2020 lockdown</option><option value="upload" disabled>Your own images (use “Add your own maps”)</option></select></label>
 <!-- Chrysanthos: "hear the change" mode, one sweep of last minus first frame. See mkChange() in js/app.js -->
 <label class="field">Listen to <select id="view"><option value="frames">Every frame, one after another</option><option value="change">Only what changed, first to last frame</option></select></label>
 </div>
+<!-- Chrysanthos: your own maps start here, right next to the map, so you see the result straight away -->
+<div class="row mine"><button id="addMaps" type="button" class="ico ico-up">Add your own maps</button></div>
 <p id="intro" class="intro"></p>
 
 <p id="status" class="status">Loading…</p>
@@ -86,22 +94,10 @@
 </ul>
 </section>
 
-<section id="how" class="wrap" aria-labelledby="ha">
-<p class="kicker">The idea</p>
-<h2 id="ha">How it works</h2>
-<ol class="steps">
-<li class="panel"><span class="step-n" aria-hidden="true">01</span><h3>Colour to number</h3><p>Every pixel is matched back to the data value it stands for, using the map’s colour scale or a picture of its colorbar. For maps without one, like night lights, brightness is the value.</p></li>
-<li class="panel"><span class="step-n" aria-hidden="true">02</span><h3>A sweep across the planet</h3><p>The sound travels from west, in your left ear, to east, in your right ear. The map is cut into 12 bands of latitude on a pentatonic scale: north is high, south is low, and a higher value is louder. Silence means nothing there.</p></li>
-<li class="panel"><span class="step-n" aria-hidden="true">03</span><h3>Change over time</h3><p>Years play in order on the same loudness scale, so change stays audible. A rising chime between frames means the average went up and a falling one means it went down.</p></li>
-<li class="panel"><span class="step-n" aria-hidden="true">04</span><h3>Hear only the change</h3><p>“Only what changed” (or the C key) plays the last frame minus the first in one sweep: a bright, clean tone where it went up, a low buzz where it went down. The voice then names the places that changed the most.</p></li>
-</ol>
-<p class="m note">Colours decoded from an image are an approximation of the true data.</p>
-</section>
-
 <section id="data" class="wrap panel" aria-labelledby="hd">
 <p class="kicker">Bring your own data</p>
 <h2 id="hd">Listen to your own maps</h2>
-<p class="m">The night lights map is real NASA data and is ready to play. To hear other data, export map frames from the NASA Earth Information Center and add them here in time order (files are sorted by name). Then choose the colormap (or upload a picture of the map’s colorbar) and the value range printed on it. Your images never leave your browser.</p>
+<p class="m">The night lights map is real NASA data and is ready to play. To hear other data, export map frames from the NASA Earth Information Center and add them with “Add your own maps” in the player or here, in time order (files are sorted by name). Then choose the colormap (or upload a picture of the map’s colorbar) and the value range printed on it. Your images never leave your browser.</p>
 <!-- Chrysanthos: the "Use demo frames" button moved into "Choose a map" at the top -->
 <label class="field">Add map frames (PNG or JPEG) <input type="file" id="files" accept=".png,.jpg,.jpeg,image/png,image/jpeg" multiple></label>
 <!-- Panagiotis: list of uploaded frames, add more in batches or remove them -->
@@ -110,6 +106,8 @@
 <p id="uploadHint" class="m hint">Add files in batches. New selections are appended and sorted by name.</p>
 <ul id="uploadList" class="upload-list"></ul>
 </div>
+<!-- Chrysanthos: colours, range and map area only matter for your own images, so they are folded away until you add some (it opens by itself then) -->
+<details id="mapSettings"><summary>Colours, value range and map area</summary>
 <div class="grid g2">
 <label class="field">Colormap <select id="cmap"><option value="diverging">Blue, white, red (anomaly maps)</option><option value="viridis">Viridis</option><option value="inferno">Inferno</option><option value="plasma">Plasma</option><option value="jet">Rainbow (jet)</option><option value="gray">Brightness only (no colormap)</option><option value="custom" disabled>From your colorbar image</option></select></label>
 <!-- Chrysanthos: most NASA maps use their own colour scale, so the built-in ones often don't match. Same idea as --colorbar in image_describer.py -->
@@ -123,11 +121,25 @@
 <div class="grid g3"><label class="field">Minimum value <input type="number" id="vmin" step="any"></label><label class="field">Maximum value <input type="number" id="vmax" step="any"></label><label class="field">Units <input type="text" id="units" size="14"></label></div>
 <details><summary>Advanced: colour tolerance, map area and map extent</summary>
 <div class="grid g4"><label class="field">Colour match tolerance <input type="number" id="tol" value="50" min="5" max="150"></label></div>
+<!-- Chrysanthos: if the image has a title, colorbar or border around the map, those get read as data. Trim them off here -->
 <p class="m hint">If your images have a title, a colorbar or a border around the map, trim it off so only the map itself is used.</p>
 <div class="grid g4"><label class="field">Trim top % <input type="number" id="cropT" value="0" min="0" max="90"></label><label class="field">Trim bottom % <input type="number" id="cropB" value="0" min="0" max="90"></label><label class="field">Trim left % <input type="number" id="cropL" value="0" min="0" max="90"></label><label class="field">Trim right % <input type="number" id="cropR" value="0" min="0" max="90"></label></div>
-<div class="grid g4"><label class="field">Hide area left % <input type="number" id="hideL" value="0" min="0" max="100"></label><label class="field">Hide area top % <input type="number" id="hideT" value="0" min="0" max="100"></label><label class="field">Hide area width % <input type="number" id="hideW" value="0" min="0" max="100"></label><label class="field">Hide area height % <input type="number" id="hideH" value="0" min="0" max="100"></label></div>
 <div class="grid g4"><label class="field">South latitude <input type="number" id="lat0" value="-90"></label><label class="field">North latitude <input type="number" id="lat1" value="90"></label><label class="field">West longitude <input type="number" id="lon0" value="-180"></label><label class="field">East longitude <input type="number" id="lon1" value="180"></label></div></details>
+</details>
 </section>
+
+<section id="how" class="wrap" aria-labelledby="ha">
+<p class="kicker">The idea</p>
+<h2 id="ha">How it works</h2>
+<ol class="steps">
+<li class="panel"><span class="step-n" aria-hidden="true">01</span><h3>Colour to number</h3><p>Every pixel is matched back to the data value it stands for, using the map’s colour scale or a picture of its colorbar. For maps without one, like night lights, brightness is the value.</p></li>
+<li class="panel"><span class="step-n" aria-hidden="true">02</span><h3>A sweep across the planet</h3><p>The sound travels from west, in your left ear, to east, in your right ear. The map is cut into 12 bands of latitude on a pentatonic scale: north is high, south is low, and a higher value is louder. Silence means nothing there.</p></li>
+<li class="panel"><span class="step-n" aria-hidden="true">03</span><h3>Change over time</h3><p>Years play in order on the same loudness scale, so change stays audible. A rising chime between frames means the average went up and a falling one means it went down.</p></li>
+<li class="panel"><span class="step-n" aria-hidden="true">04</span><h3>Hear only the change</h3><p>“Only what changed” (or the C key) plays the last frame minus the first in one sweep: a bright, clean tone where it went up, a low buzz where it went down. The voice then names the places that changed the most.</p></li>
+</ol>
+<p class="m note">Colours decoded from an image are an approximation of the true data.</p>
+</section>
+
 
 <section id="keys" class="wrap" aria-labelledby="hk">
 <p class="kicker">No mouse needed</p>
@@ -151,11 +163,11 @@
 <footer class="wrap footer">
 <div class="foot-grid">
 <div><p class="brand-foot">Earth Jukebox</p><p class="m">Made for the NASA Space Apps Challenge 2026, “The Earth Information Jukebox”, by Chrysanthos Spyrou, Panayiotis Agathangelou and Chara Charalambous.</p></div>
-<div><p class="foot-h">Data</p><p class="m">Night lights: NASA Black Marble, <a href="https://svs.gsfc.nasa.gov/5276/">NASA Scientific Visualization Studio</a>.</p></div>
+<div><p class="foot-h">Data</p><p class="m">Night lights: NASA Black Marble, <a href="https://svs.gsfc.nasa.gov/5276/">NASA Scientific Visualization Studio</a>. Air pollution example: NASA satellite images of nitrogen dioxide (NO₂) over the north-eastern United States, March 2015–19 average and March 2020.</p></div>
 <div><p class="foot-h">Code</p><p class="m"><a href="https://github.com/Panagiotis676/nasa-app-hackathon">Source on GitHub</a>. No accounts, no tracking, your images stay in your browser.</p></div>
 </div>
 <p class="m disclaimer">This is an independent project, not an official NASA product.</p>
 </footer>
 <!-- Chrysanthos: preset data, built by tools/build_nightlights.py. If it's missing the page falls back to the demo -->
-<script src="data/nightlights.js?v=20261114-9"></script>
-<script src="js/app.js?v=20261114-9"></script></body></html>
+<script src="data/nightlights.js?v=20261114-10"></script>
+<script id="appJs" src="js/app.js?v=20261114-10"></script></body></html>
