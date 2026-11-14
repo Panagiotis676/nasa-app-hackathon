@@ -117,7 +117,7 @@ const CW=()=>Object.assign({legend:'A bright, high tone means the value went up 
 const changeHow=()=>CW().legend;
 const pctWord=v=>v<1?'less than 1':Math.round(v);
 function describeChange(f){
- const s=f.st,a=f.from,b=f.to,names=(arr,k)=>{const t=arr.slice(0,k).filter(p=>p[1]>=.2*arr[0][1]).map(p=>p[0]);return t.length>1?t.slice(0,-1).join(', ')+' and '+t.at(-1):t[0];};
+ const s=f.st,a=f.from,b=f.to,names=(arr,k)=>{const t=arr.slice(0,k).filter(p=>p[1]>=.2*arr[0][1]).map(p=>p[0]);return t.length>1?t.slice(0,-1).join(', ')+' and '+t[t.length-1]:t[0];};
  const p=S.vmin>=0&&a.st.mean>0?Math.abs(100*s.mean/a.st.mean):null;
  let t='What changed from '+a.name+' to '+b.name+'. Overall the average '+((p!==null?p<.05:+fmt(Math.abs(s.mean))===0)?'stayed about the same':'went '+(s.mean>=0?'up ':'down ')+(p!==null?(p<10?p.toFixed(1):Math.round(p))+' percent':'by '+fmt(Math.abs(s.mean))+u()))+'.';
  const w=CW();if(s.up.length)t+=' '+w.up+' '+names(s.up,3)+'.';
