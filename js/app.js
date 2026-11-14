@@ -324,8 +324,28 @@ function areaDown(im,sx,sy,sw,sh,m){
    const o=4*(j*W+i);out[o]=r/n;out[o+1]=g/n;out[o+2]=b/n;out[o+3]=a/n;}}
  return{data:out,width:W,height:H};}
 function prep(im,name,autoCrop){const k=S.crop,ac=autoCrop||{t:0,b:0,l:0,r:0},mix={t:Math.min(90,k.t+ac.t),b:Math.min(90,k.b+ac.b),l:Math.min(90,k.l+ac.l),r:Math.min(90,k.r+ac.r)},sx=im.width*mix.l/100,sy=im.height*mix.t/100,sw=Math.max(1,im.width*(1-(mix.l+mix.r)/100)),sh=Math.max(1,im.height*(1-(mix.t+mix.b)/100)),mk=m=>{const s=Math.min(1,m/Math.max(sw,sh)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(sw*s));c.height=Math.max(1,Math.round(sh*s));c.getContext('2d').drawImage(im,sx,sy,sw,sh,0,0,c.width,c.height);return c;},d=mk(720);let raw;if(S.gray)raw=areaDown(im,sx,sy,sw,sh,160);else{const a=mk(160);raw=a.getContext('2d').getImageData(0,0,a.width,a.height);}return{name:name.replace(/\.[^.]+$/,'').replace(/[_-]+/g,' '),raw,disp:d};}
-$('files').addEventListener('change',async e=>{const fl=[...e.target.files].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));if(!fl.length)return;announce('Loading '+fl.length+' images.');const keep=new Set(uploaded.map(itemKey));const add=[];try{for(const f of fl){const id=fileKey(f);if(keep.has(id))continue;add.push({id,name:f.name,img:await loadImg(f)});keep.add(id);}}catch(err){announce('Could not read '+err.message+'. Please use PNG or JPEG images.');return;}if(!add.length){announce('Those images are already loaded.');e.target.value='';return;}
-uploaded=[...uploaded,...add].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));renderUploadList();sources=uploaded;mode='images';preset=null;const o=$('preset').querySelector('[value=upload]');o.disabled=false;$('preset').value='upload';$('intro').textContent='Your own images, '+uploaded.length+' frames.';fIdx=0;e.target.value='';rebuild();});
+// Chrysanthos: same code as before, now a function so "Add your own maps" and "Try an example" share it. Afterwards it
+// opens the settings and brings the player back into view, so you hear and see the result straight away.
+async function addFiles(list,intro){const fl=[...list].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));if(!fl.length)return;announce('Loading '+fl.length+' images.');const keep=new Set(uploaded.map(itemKey));const add=[];try{for(const f of fl){const id=fileKey(f);if(keep.has(id))continue;add.push({id,name:f.name,img:await loadImg(f)});keep.add(id);}}catch(err){announce('Could not read '+err.message+'. Please use PNG or JPEG images.');return;}if(!add.length){announce('Those images are already loaded.');$('files').value='';return;}
+uploaded=[...uploaded,...add].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));renderUploadList();sources=uploaded;mode='images';preset=null;const o=$('preset').querySelector('[value=upload]');o.disabled=false;$('preset').value='upload';$('intro').textContent=intro||'Your own images, '+uploaded.length+' frames.';fIdx=0;$('files').value='';rebuild();
+ $('mapSettings').open=true;$('player').scrollIntoView({block:'start'});$('play').focus({preventScroll:true});}
+$('files').addEventListener('change',e=>addFiles(e.target.files));
+$('addMaps').onclick=()=>$('files').click();
+// Chrysanthos: "Try an example" adds two NASA images (data/examples.js, only loaded when needed) exactly like an upload, with the
+// range, units and map area filled in. It replaces whatever was uploaded before.
+let exampleJs=null;
+async function loadExample(){const btn=$('tryExample');if(btn.disabled)return;btn.disabled=true;announce('Loading the example.');
+ try{exampleJs=exampleJs||new Promise((ok,no)=>{const sc=document.createElement('script'),v=$('appJs').getAttribute('src').split('?')[1];sc.src='data/examples.js'+(v?'?'+v:'');sc.onload=ok;sc.onerror=()=>{exampleJs=null;no(new Error('examples.js'));};document.head.appendChild(sc);});
+  await exampleJs;const X=window.EJ_EXAMPLE;
+  // its colorbar sits inside the map, where auto-detection doesn't look, so it comes with the example, same as uploading it by hand
+  $('cbar').value='';makeCustomLutFromLine(X.bar);manualCustomLut=true;$('cmap').value='custom';$('vmin').value=X.vmin;$('vmax').value=X.vmax;$('units').value=X.units;$('lat0').value=X.lat[0];$('lat1').value=X.lat[1];$('lon0').value=X.lon[0];$('lon1').value=X.lon[1];
+  ['cropT','cropB','cropL','cropR'].forEach(k=>{$(k).value=0;});uploaded=[];
+  const files=X.frames.map(f=>{const b=atob(f.src.split(',')[1]),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return new File([a],f.name,{type:'image/jpeg',lastModified:0});});
+  await addFiles(files,X.intro);}
+ catch(_err){announce('The example could not be loaded.');}
+ finally{btn.disabled=false;}}
+$('tryExample').onclick=loadExample;
+$('startListen').addEventListener('click',()=>{if(!playing)play();});
 
 $('uploadList').addEventListener('click',e=>{const id=e.target&&e.target.dataset?e.target.dataset.remove:null;if(!id)return;uploaded=uploaded.filter(x=>itemKey(x)!==id);renderUploadList();if(!uploaded.length){sources=[];mode='images';pause();frames=[];draw();updStatus();announce('All uploaded frames were removed.');return;}if($('preset').value==='upload'){sources=uploaded;fIdx=0;rebuild();}});
 $('clearUploads').addEventListener('click',()=>{if(!uploaded.length)return;uploaded=[];sources=[];renderUploadList();if($('preset').value==='upload'){pause();frames=[];draw();updStatus();announce('All uploaded frames were removed. Add images to begin.');}});
@@ -398,6 +418,8 @@ $('dl').addEventListener('click',downloadSound);
 $('vol').addEventListener('input',()=>{if(master)master.gain.value=+$('vol').value;});
 // Chrysanthos: Explore mode. E (or the button) stops playback and lets you walk around the map with the arrow keys,
 // a click or a finger. Every step plays one short note for that spot, Enter says the place and the value in words.
+// 10 degree steps suit the whole Earth but jump straight off a small map (the example is ~9 degrees tall), so small maps get smaller steps
+const exStep=()=>{const m=Math.min(Math.abs(S.lat1-S.lat0),Math.abs(S.lon1-S.lon0))/8;return[10,5,2,1,.5,.25].find(v=>v<=m)||.25;};
 const latR=()=>[Math.min(S.lat0,S.lat1),Math.max(S.lat0,S.lat1)],lonR=()=>[Math.min(S.lon0,S.lon1),Math.max(S.lon0,S.lon1)];
 function exClamp(la,lo){const a=latR(),o=lonR();return[Math.max(a[0],Math.min(a[1],la)),Math.max(o[0],Math.min(o[1],lo))];}
 // average of a small patch (about 1/72 of the map wide) around the point, NaN if none of it has data
@@ -424,7 +446,7 @@ function exTone(){const f=frames[fIdx];if(!f)return;initAudio();ac.resume().catc
 function exGo(la,lo){[exLat,exLon]=exClamp(la,lo);exT=performance.now();draw();exTone();}
 function exMove(dLat,dLon,st){const [la,lo]=exClamp(exLat+dLat*st,exLon+dLon*st);
  if(la===exLat&&lo===exLon){announce((dLat>0?'North':dLat<0?'South':dLon>0?'East':'West')+' edge of the map.');return;}exGo(la,lo);}
-const exHelp=()=>'Explore mode. The arrow keys move around the map, 10 degrees a step, or 30 with Shift. Each step plays that spot: higher pitch further north, left ear for west and right ear for east, '+
+const exHelp=()=>'Explore mode. The arrow keys move around the map, '+exStep()+' degrees a step, or '+3*exStep()+' with Shift. Each step plays that spot: higher pitch further north, left ear for west and right ear for east, '+
  (frames[fIdx]&&frames[fIdx].change?'a clean tone where it went up and a low buzz where it went down':'louder for a higher value')+'. A soft click means no data. Enter says the place and the value. N and P still change the frame. Press E or Escape to leave.';
 function setExplore(on,quiet){if(on===exploring)return;if(on&&!frames.length){announce('Add frames first.');return;}
  exploring=on;$('explore').setAttribute('aria-pressed',String(on));$('cv').classList.toggle('exploring',on);
@@ -455,7 +477,7 @@ document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return
 // Chrysanthos: in Explore the arrows move the cursor instead of changing the frame, Enter speaks the spot. Enter on another button still presses it.
 if(k==='e'){e.preventDefault();setExplore(!exploring);return;}
 if(exploring){const mv={arrowup:[1,0],arrowdown:[-1,0],arrowleft:[0,-1],arrowright:[0,1]}[k];
- if(mv){e.preventDefault();exMove(mv[0],mv[1],e.shiftKey?30:10);return;}
+ if(mv){e.preventDefault();exMove(mv[0],mv[1],(e.shiftKey?3:1)*exStep());return;}
  if(k==='escape'){e.preventDefault();setExplore(false);return;}
  if(k==='enter'&&!((t==='BUTTON'&&e.target.id!=='explore')||t==='A'||t==='SUMMARY')){e.preventDefault();exSpeak();return;}}
 if(k===' '){if(t==='BUTTON'||t==='SUMMARY'||t==='A')return;e.preventDefault();toggle();}

@@ -142,6 +142,13 @@ button.subtle{min-height:2.3rem;padding:.3rem .9rem;font-size:.92rem;font-weight
 .ico-explore{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11 1h2v4.1A7 7 0 0 1 18.9 11H23v2h-4.1A7 7 0 0 1 13 18.9V23h-2v-4.1A7 7 0 0 1 5.1 13H1v-2h4.1A7 7 0 0 1 11 5.1zm1 6a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4z'/%3E%3C/svg%3E")}
 button[aria-pressed="true"]{background:linear-gradient(90deg,var(--acc),var(--acc-2));color:var(--on-acc);border-color:transparent}
 #cv.exploring{cursor:crosshair;touch-action:none}
+/* Chrysanthos: "Add your own maps" (upload arrow) and "Try an example" (spark), and the three "Start here" steps in the hero */
+.ico-up{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11 16V6.8L7.7 10.1 6.3 8.7 12 3l5.7 5.7-1.4 1.4L13 6.8V16zM5 18h14v2H5z'/%3E%3C/svg%3E")}
+.ico-try{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2l2.2 6.3L20.5 10l-6.3 2.2L12 18.5l-2.2-6.3L3.5 10l6.3-1.7zM19 15l1 2.6 2.5 1-2.5 1L19 22l-1-2.4-2.5-1 2.5-1z'/%3E%3C/svg%3E")}
+.mine{gap:.6rem;margin:.9rem 0 0}
+.start{list-style:none;counter-reset:s;margin:1.3rem 0 1.5rem;padding:0;display:grid;gap:.6rem;max-width:46rem}
+.start li{counter-increment:s;position:relative;padding-left:2.5rem;line-height:1.55;min-height:1.7rem}
+.start li::before{content:counter(s);position:absolute;left:0;top:-.05rem;display:grid;place-items:center;width:1.7rem;height:1.7rem;border-radius:50%;background:linear-gradient(90deg,var(--acc),var(--acc-2));color:var(--on-acc);font-weight:850;font-size:.95rem}
 .ico-help{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 16h-2v-2h2zm2-7.5-.9.9c-.7.7-1.1 1.3-1.1 2.6h-2v-.5c0-1.1.4-2.1 1.2-2.8l1.2-1.3A1.8 1.8 0 0 0 14 8a2 2 0 0 0-4 0H8a4 4 0 0 1 8 0c0 .9-.4 1.8-1 2.5z'/%3E%3C/svg%3E")}
 .field{display:flex;flex-direction:column;gap:.4rem;font-weight:650;font-size:1rem}
 section>.field{margin:1rem 0}
