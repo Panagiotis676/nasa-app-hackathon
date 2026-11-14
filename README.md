@@ -53,7 +53,7 @@ SECURITY.md             how to report a security problem, what happens to your d
 
 ## Getting started
 
-**Web app.** Open `index.html` in Chrome, Edge, Firefox or Safari and press Play (or Space). Pick another map under "Choose a map", or add your own frames under "Data". It also works as-is on GitHub Pages.
+**Web app.** Open `index.html` in Chrome, Edge, Firefox or Safari and press Play (or Space). Pick another map under "Choose a map", or add your own PNG/JPEG frames under "Data". It also works as-is on GitHub Pages.
 
 **Command line** (Python 3.9+, the team uses 3.13). Works the same on Windows and Mac; on Windows use `py` if `python` isn't found.
 

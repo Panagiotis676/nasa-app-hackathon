@@ -195,7 +195,8 @@ const cov=frames.reduce((a,f)=>a+f.st.n/(f.W*f.H),0)/frames.length,f0=frames[0];
 announce(pre+note+(cov<.05?'Loaded '+frames.length+' frames, but very few pixels matched the colormap. Check the colormap, range and tolerance.':f0.change?'Ready to hear what changed from '+f0.from.name+' to '+f0.to.name+'. '+changeHow()+' Press Play to listen.':'Loaded '+frames.length+' frames. Press Play to listen.'));}
 function setView(v){view=v;$('view').value=v;fIdx=0;rebuild();}
 function setDemo(){$('cmap').value='diverging';$('vmin').value=-3;$('vmax').value=3;$('units').value='°C anomaly';mode='demo';preset=null;$('intro').textContent='Made-up data, not from NASA: six months of a pretend ocean temperature anomaly, with a warm patch in the Pacific that grows and then fades.';}
-const loadImg=f=>new Promise((ok,no)=>{const url=URL.createObjectURL(f),i=new Image();i.onload=()=>{URL.revokeObjectURL(url);ok(i);};i.onerror=()=>no(new Error(f.name));i.src=url;});
+const isPngOrJpeg=f=>{const ext=f.name.toLowerCase().match(/\.[^.]+$/)?.[0],byName=ext==='.png'||ext==='.jpg'||ext==='.jpeg',byType=f.type==='image/png'||f.type==='image/jpeg';return byName&&(!f.type||byType);};
+const loadImg=f=>new Promise((ok,no)=>{if(!isPngOrJpeg(f)){no(new Error(`${f.name} is not a PNG or JPEG image`));return;}const url=URL.createObjectURL(f),i=new Image();i.onload=()=>{URL.revokeObjectURL(url);ok(i);};i.onerror=()=>{URL.revokeObjectURL(url);no(new Error(f.name));};i.src=url;});
 const loadURL=(url,name)=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>no(new Error(name));i.src=url;});
 const fileKey=f=>`${f.name}::${f.size}::${f.lastModified}`;
 const itemKey=x=>x.id||x.name;
