@@ -8,7 +8,7 @@
 <!-- Chrysanthos: everything is local (no web fonts, no trackers), so it also works offline by double-clicking.
      The ?v= number makes browsers fetch the new file after a change (GitHub Pages lets them keep old copies for 10 minutes,
      and new HTML with an old CSS/JS breaks the page). Change the number in every place when you edit css, js or data. -->
-<link rel="stylesheet" href="css/style.css?v=20261114-12">
+<link rel="stylesheet" href="css/style.css?v=20261114-13">
 </head><body>
 <a class="skip" href="#player">Skip to the player</a>
 <div class="sky" aria-hidden="true"></div>
@@ -97,18 +97,24 @@
 
 <section id="data" class="wrap panel" aria-labelledby="hd">
 <p class="kicker">Bring your own data</p>
-<h2 id="hd">Listen to your own maps</h2>
-<p class="m">The night lights map is real NASA data and is ready to play. To hear other data, export map frames from the NASA Earth Information Center and add them with “Add your own maps” in the player or here, in time order (files are sorted by name). Then choose the colormap (or upload a picture of the map’s colorbar) and the value range printed on it. Your images never leave your browser.</p>
+<h2 id="hd">Your own maps: files and settings</h2>
+<!-- Chrysanthos: this section only sets up your images, they play in the player above. Said so first, the old title ("Listen to your own maps") made people look for a second player -->
+<p class="m">Your maps play in the player above. Here you add the images and tell the app how to read their colours. Your images never leave your browser.</p>
+<ol class="start" role="list" aria-label="How to add your own maps">
+<li>Save map images from the NASA Earth Information Center, one per date, all with the same view. Name them so they sort in time order, for example <kbd>2015.png</kbd>, <kbd>2020.png</kbd>.</li>
+<li>Add them with “Add your own maps” in the player, or with the file picker below.</li>
+<li>Under “Colours and value range”, choose the map’s colour scale (or upload a picture of its colorbar) and type the lowest and highest values printed on it.</li>
+</ol>
 <!-- Chrysanthos: the "Use demo frames" button moved into "Choose a map" at the top -->
 <label class="field">Add map frames (PNG or JPEG) <input type="file" id="files" accept=".png,.jpg,.jpeg,image/png,image/jpeg" multiple></label>
 <!-- Panagiotis: list of uploaded frames, add more in batches or remove them -->
 <div class="uploads" aria-live="polite">
-<div class="uploads-head"><strong>Uploaded frames</strong> <button type="button" id="clearUploads" class="subtle">Clear all</button></div>
-<p id="uploadHint" class="m hint">Add files in batches. New selections are appended and sorted by name.</p>
+<div class="uploads-head"><strong>Your images</strong> <button type="button" id="clearUploads" class="subtle">Clear all</button></div>
+<p id="uploadHint" class="m hint">You can add more at any time, they are kept in order by file name.</p>
 <ul id="uploadList" class="upload-list"></ul>
 </div>
 <!-- Chrysanthos: colours, range and map area only matter for your own images, so they are folded away until you add some (it opens by itself then) -->
-<details id="mapSettings"><summary>Colours, value range and map area</summary>
+<details id="mapSettings"><summary>Colours and value range</summary>
 <div class="grid g2">
 <label class="field">Colormap <select id="cmap"><option value="diverging">Blue, white, red (anomaly maps)</option><option value="viridis">Viridis</option><option value="inferno">Inferno</option><option value="plasma">Plasma</option><option value="jet">Rainbow (jet)</option><option value="gray">Brightness only (no colormap)</option><option value="custom" disabled>From your colorbar image</option></select></label>
 <!-- Chrysanthos: most NASA maps use their own colour scale, so the built-in ones often don't match. Same idea as --colorbar in image_describer.py -->
@@ -117,10 +123,11 @@
 <!-- Panagiotis: colorbars printed inside the frames are found automatically -->
 <p id="cmapDetect" class="detect-badge off">Colorbar status: waiting for images.</p>
 <label class="check"><input type="checkbox" id="autoColorbar" checked> <span>Auto-detect colorbars embedded in map frames</span></label>
-<p class="m hint">If a map includes a colorbar near an edge, the app can detect it, crop it from the map area, and use it as the colormap. You can still upload a manual colorbar to override.</p>
-<p id="autoColorbarStatus" class="m hint">Auto colorbar detection is idle.</p>
+<p class="m hint">If the colorbar is printed along an edge of your images, the app finds it and uses it. If it sits inside the map, upload a picture of it above instead.</p>
+<!-- Chrysanthos: hidden, it said the same as the colorbar status above (the code still fills it in) -->
+<p id="autoColorbarStatus" class="m hint" hidden>Auto colorbar detection is idle.</p>
 <div class="grid g3"><label class="field">Minimum value <input type="number" id="vmin" step="any"></label><label class="field">Maximum value <input type="number" id="vmax" step="any"></label><label class="field">Units <input type="text" id="units" size="14"></label></div>
-<details><summary>Advanced: colour tolerance, map area and map extent</summary>
+<details><summary>Advanced: colour matching, trimming the edges, latitude and longitude</summary>
 <div class="grid g4"><label class="field">Colour match tolerance <input type="number" id="tol" value="50" min="5" max="150"></label></div>
 <!-- Chrysanthos: if the image has a title, colorbar or border around the map, those get read as data. Trim them off here -->
 <p class="m hint">If your images have a title, a colorbar or a border around the map, trim it off so only the map itself is used.</p>
@@ -171,6 +178,6 @@
 <p class="m disclaimer">This is an independent project, not an official NASA product.</p>
 </footer>
 <!-- Chrysanthos: preset data, built by tools/build_nightlights.py. If it's missing the page falls back to the demo -->
-<script src="data/nightlights.js?v=20261114-12"></script>
-<script src="data/descriptions.js?v=20261114-12"></script>
-<script id="appJs" src="js/app.js?v=20261114-12"></script></body></html>
+<script src="data/nightlights.js?v=20261114-13"></script>
+<script src="data/descriptions.js?v=20261114-13"></script>
+<script id="appJs" src="js/app.js?v=20261114-13"></script></body></html>

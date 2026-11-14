@@ -113,10 +113,10 @@ const check = (name, ok, info = '') => results.push([ok ? 'PASS' : 'FAIL', name,
   await p.setInputFiles('#cbar', REPO + '/media/colloure bar.png'); await p.waitForTimeout(700);
   check('Manual colorbar upload', (await p.inputValue('#cmap')) === 'custom' && (await p.textContent('#cmapDetect')).includes('uploaded'), await p.textContent('#cmapDetect'));
   await p.click('#uploadList li button'); await p.waitForTimeout(400); check('Remove one frame', (await p.$$('#uploadList li')).length === 1);
-  await p.click('#clearUploads'); await p.waitForTimeout(300); check('Clear all', (await p.textContent('#uploadList')).includes('No uploaded frames'));
+  await p.click('#clearUploads'); await p.waitForTimeout(300); check('Clear all', (await p.textContent('#uploadList')).includes('No images added'));
 
   // Q. first visit: Start here, Add your own maps, Try an example
-  check('Start here: 3 steps at the top', (await p.$$('.start li')).length === 3);
+  check('Start here: 3 steps at the top', (await p.$$('.hero .start li')).length === 3 && (await p.$$('#data .start li')).length === 3);
   const [fc] = await Promise.all([p.waitForEvent('filechooser'), p.click('#addMaps')]);
   await fc.setFiles([REPO + '/media/eic_example_1.jpeg']); await p.waitForTimeout(900);
   check('"Add your own maps" in the player opens the file picker and loads', (await p.$$('#uploadList li')).length === 1 && (await ev(() => frames.length)) === 1);
