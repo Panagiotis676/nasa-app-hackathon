@@ -353,19 +353,59 @@ manualCustomLut=true;makeCustomLutFromLine(line);$('cmap').value='custom';setDet
 $('cmap').addEventListener('change',()=>{if($('cmap').value==='gray'){$('vmin').value=0;$('vmax').value=1;}if($('cmap').value!=='custom')manualCustomLut=false;});
 ['cmap','vmin','vmax','units','tol','lat0','lat1','lon0','lon1','cropT','cropB','cropL','cropR','autoColorbar'].forEach(id=>$(id).addEventListener('change',rebuild));
 $('play').onclick=toggle;$('prev').onclick=()=>step(-1);$('next').onclick=()=>step(1);$('replay').onclick=replay;$('desc').onclick=describeNow;$('leg').onclick=()=>say(legendText());
+// ---------------------------------------------------------------------------------------------
+// Chrysanthos: "Download sound" renders exactly what Play would play (every frame, or the change sweep) into a WAV
+// file: same voices, panning and chimes, at the chosen speed. The spoken voice isn't in it, browsers can't record it.
+// Useful for the submission (it allows "a collection of audio files") and as a clean soundtrack for the video.
+// ---------------------------------------------------------------------------------------------
+function chimeAt(oc,out,dir,t0){const sq=dir==='up'?[660,880]:dir==='down'?[880,660]:[770];sq.forEach((fr,k)=>{const o=oc.createOscillator(),g=oc.createGain(),t=t0+k*.18;o.type='triangle';o.frequency.value=fr;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.25,t+.02);g.gain.exponentialRampToValueAtTime(.001,t+.3);o.connect(g);g.connect(out);o.start(t);o.stop(t+.32);});}
+function renderSound(){
+ const sec=+$('speed').value,sr=22050,n=frames.length,dur=n*sec+.5,O=window.OfflineAudioContext||window.webkitOfflineAudioContext;
+ const oc=new O(2,Math.ceil(dur*sr),sr),out=oc.createGain(),comp=oc.createDynamicsCompressor(),bus=oc.createGain(),pn=oc.createStereoPanner();
+ out.gain.value=.9;bus.connect(pn);pn.connect(comp);comp.connect(out);out.connect(oc.destination);
+ const up=[],dn=[];
+ for(let b=0;b<12;b++){const f=hz(11-b),g=oc.createGain(),g2=oc.createGain(),o1=oc.createOscillator(),o2=oc.createOscillator();g.gain.value=0;g2.gain.value=.3;o1.frequency.value=f;o2.frequency.value=2*f;o1.connect(g);o2.connect(g2);g2.connect(g);g.connect(bus);o1.start();o2.start();up.push(g);
+  const d=oc.createGain(),o=oc.createOscillator(),lp=oc.createBiquadFilter();o.type='sawtooth';o.frequency.value=f/2;lp.type='lowpass';lp.frequency.value=f*1.5;d.gain.value=0;o.connect(lp);lp.connect(d);d.connect(bus);o.start();dn.push(d);}
+ frames.forEach((f,i)=>{const t0=i*sec,p=frames[i-1];
+  if(p&&p.st.n&&f.st.n){const d=f.st.mean-p.st.mean,th=S.vmin>=0&&p.st.mean>0?p.st.mean*.01:(S.vmax-S.vmin)*.01;chimeAt(oc,out,d>th?'up':d<-th?'down':'same',t0);}
+  pn.pan.setValueAtTime(-1,t0);pn.pan.linearRampToValueAtTime(1,t0+sec-.01);
+  for(let col=0;col<f.W;col++){const t=t0+col/f.W*sec;for(let b=0;b<12;b++){const k=b*f.W+col;up[b].gain.setTargetAtTime(f.change?f.B[k]*.08:Math.pow(f.B[k],1.5)*.07,t,.04);dn[b].gain.setTargetAtTime(f.change?f.Bd[k]*.13:0,t,.04);}}});
+ for(let b=0;b<12;b++){up[b].gain.setTargetAtTime(0,n*sec,.05);dn[b].gain.setTargetAtTime(0,n*sec,.05);}
+ return oc.startRendering();}
+// 16-bit stereo WAV, one gain for the whole file (so loud and quiet years keep their difference)
+function wavBlob(buf){const ch=buf.numberOfChannels,len=buf.length,sr=buf.sampleRate,data=[];for(let c=0;c<ch;c++)data.push(buf.getChannelData(c));
+ let peak=0;for(const d of data)for(let i=0;i<len;i++){const a=Math.abs(d[i]);if(a>peak)peak=a;}const gain=peak>0?.9/peak:1;
+ const v=new DataView(new ArrayBuffer(44+len*ch*2)),w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+ w(0,'RIFF');v.setUint32(4,36+len*ch*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,ch,true);v.setUint32(24,sr,true);v.setUint32(28,sr*ch*2,true);v.setUint16(32,ch*2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,len*ch*2,true);
+ let o=44;for(let i=0;i<len;i++)for(let c=0;c<ch;c++){const x=Math.max(-1,Math.min(1,data[c][i]*gain));v.setInt16(o,x<0?x*32768:x*32767,true);o+=2;}
+ return new Blob([v],{type:'audio/wav'});}
+async function downloadSound(){
+ if(!frames.length){announce('Add frames first.');return;}
+ const btn=$('dl');if(btn.disabled)return;btn.disabled=true;btn.textContent='Preparing…';announce('Preparing the sound file.');
+ try{const buf=await renderSound(),f0=frames[0],last=frames[frames.length-1],
+   name=('earth-jukebox-'+(preset?preset.id:mode==='demo'?'demo':'my-maps')+'-'+(f0.change?'change-'+f0.from.name+'-'+f0.to.name:f0.name+(frames.length>1?'-'+last.name:''))).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')+'.wav',
+   url=URL.createObjectURL(wavBlob(buf)),a=document.createElement('a');
+  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
+  const s=Math.round(buf.duration),m=Math.floor(s/60);
+  announce('Sound file saved: '+name+', '+(m?m+(m>1?' minutes ':' minute '):'')+(s%60)+' seconds. It has the music and the chimes, but not the voice.');}
+ catch(err){announce('Sorry, this browser could not make the sound file.');}
+ finally{btn.disabled=false;btn.textContent='Download sound';}}
+$('dl').addEventListener('click',downloadSound);
 $('vol').addEventListener('input',()=>{if(master)master.gain.value=+$('vol').value;});
-document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const t=e.target.tagName;if(t==='INPUT'||t==='SELECT'||t==='TEXTAREA')return;const k=e.key.toLowerCase();
+// Chrysanthos: + and - change the speed, ? reads all the shortcuts (both were in the plan in ARCHITECTURE.md)
+const SHORTCUTS='Keyboard shortcuts. Space: play or pause. Right arrow or N: next frame. Left arrow or P: previous frame. R: replay the frame. D: describe the frame. L: how to listen. C: switch between every frame and only what changed. Plus or minus: faster or slower. Question mark: read these shortcuts again.';
+function changeSpeed(d){const s=$('speed'),i=s.selectedIndex+d;if(i<0||i>=s.options.length){announce(d>0?'This is already the fastest speed.':'This is already the slowest speed.');return;}s.selectedIndex=i;announce('Speed: '+s.options[i].text+'.');}
+// Chrysanthos: letters are read from the key's position when the layout isn't Latin, so D, L, C... also work with a Greek keyboard (it types δ, λ, ψ)
+document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const t=e.target.tagName;if(t==='INPUT'||t==='SELECT'||t==='TEXTAREA')return;let k=e.key.toLowerCase();if(k.length===1&&!/[a-z0-9 ?+\-=_]/.test(k)&&/^Key[A-Z]$/.test(e.code||''))k=e.code.slice(3).toLowerCase();if(e.code==='Slash'&&e.shiftKey)k='?';
 if(k===' '){if(t==='BUTTON'||t==='SUMMARY'||t==='A')return;e.preventDefault();toggle();}
 else if(k==='arrowright'||k==='n'){e.preventDefault();step(1);}else if(k==='arrowleft'||k==='p'){e.preventDefault();step(-1);}
-else if(k==='r')replay();else if(k==='d')describeNow();else if(k==='l')say(legendText());else if(k==='c')setView(view==='change'?'frames':'change');});
-// Chrysanthos: light theme switch. The page is dark ("space") by default, some low-vision users read better on light.
-function setTheme(light){const r=document.documentElement;if(r&&r.setAttribute){if(light)r.setAttribute('data-theme','light');else r.removeAttribute('data-theme');}$('themeBtn').setAttribute('aria-pressed',light?'true':'false');try{localStorage.setItem('ej-theme',light?'light':'dark');}catch(_e){}}
-$('themeBtn').addEventListener('click',()=>setTheme(!(document.documentElement&&document.documentElement.getAttribute('data-theme')==='light')));
-try{if(localStorage.getItem('ej-theme')==='light')setTheme(true);}catch(_e){}
+else if(k==='r')replay();else if(k==='d')describeNow();else if(k==='l')say(legendText());else if(k==='c')setView(view==='change'?'frames':'change');
+else if(k==='+'||k==='='){e.preventDefault();changeSpeed(1);}else if(k==='-'||k==='_'){e.preventDefault();changeSpeed(-1);}else if(k==='?'){e.preventDefault();say(SHORTCUTS);}});
 setDemo();S=readS();frames=demoFrames();draw();updStatus();
 renderUploadList();
 setDetectBadge('off','waiting for images.');
 setAutoStatus('Auto colorbar detection is idle.');
-// Chrysanthos: open on the real NASA night lights if the data file is there, otherwise stay on the demo like before
+// Chrysanthos: open on the real NASA night lights. The made-up demo is no longer in the menu, it only shows up if the
+// NASA data file can't be loaded, so the page is never empty.
 if(window.EJ_PRESETS&&window.EJ_PRESETS.nightlights){$('preset').value='nightlights';usePreset('nightlights').finally(()=>{booting=false;});}
-else{$('preset').querySelector('[value=nightlights]').disabled=true;$('preset').value='demo';booting=false;}
+else{$('preset').querySelector('[value=nightlights]').disabled=true;$('intro').textContent='The NASA data file (data/nightlights.js) could not be loaded, so this is a made-up demo map, not real data. You can still add your own maps below.';booting=false;}

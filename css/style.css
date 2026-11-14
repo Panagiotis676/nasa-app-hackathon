@@ -1,8 +1,8 @@
 /* Earth Jukebox: space / mission-control look.
-   Chrysanthos: redesigned for the presentation. Dark "night side of the Earth" theme by default, plus a light theme
-   (button in the top bar) for people who need it. Kept on purpose for low-vision users: big click targets, a thick
+   Chrysanthos: redesigned for the presentation. One dark "night side of the Earth" theme (the team chose dark only).
+   Kept on purpose for low-vision users: big click targets, a thick
    gold focus ring, high-contrast text, and no animation when the computer is set to "reduce motion".
-   All colours are the variables right below, dark theme first, then light. */
+   All colours are the variables right below. */
 :root{
   --bg:#040814;--bg2:#071026;
   --panel:rgba(11,20,42,.8);--sunken:rgba(4,9,22,.72);
@@ -15,20 +15,12 @@
   --r:22px;--r-sm:12px;--mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
   color-scheme:dark;
 }
-:root[data-theme="light"]{
-  --bg:#eef3fb;--bg2:#e4ebf8;--panel:rgba(255,255,255,.94);--sunken:#f4f7fc;
-  --fg:#0b1530;--mut:#3d4964;--dim:#4f5c78;
-  --line:#d3dbea;--line-2:#bfcadf;--field:#fff;--field-bd:#68748d;--btn:#eef3fb;--btn-hover:#dfe7f6;
-  --acc:#1d4ed8;--acc-2:#6d28d9;--on-acc:#fff;--gold:#8a5a00;--up:#d99a00;--down:#2563eb;
-  --focus:#1d4ed8;--shadow:0 24px 60px -36px rgba(15,23,42,.35);color-scheme:light;
-}
 
 *,*::before,*::after{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:5.5rem}
 body{margin:0;min-height:100vh;color:var(--fg);font:1.0625rem/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;
   background:radial-gradient(1100px 600px at 85% -10%,rgba(80,120,255,.16),transparent 60%),radial-gradient(900px 520px at -10% 5%,rgba(150,90,255,.11),transparent 60%),linear-gradient(180deg,var(--bg),var(--bg2)) fixed;
   background-color:var(--bg);padding-bottom:env(safe-area-inset-bottom,0px)}
-:root[data-theme="light"] body{background:linear-gradient(180deg,var(--bg),var(--bg2)) fixed}
 .wrap{width:min(100% - 2rem,72rem);margin-inline:auto}
 h1,h2,h3{line-height:1.15;margin:0;letter-spacing:-.02em}
 h2{font-size:clamp(1.6rem,3.4vw,2.2rem);margin-bottom:1rem}
@@ -57,22 +49,18 @@ a{color:var(--acc);text-underline-offset:3px}
   background:radial-gradient(ellipse at 50% 0%,rgba(30,70,150,.55),rgba(6,14,34,.95) 45%,var(--bg2) 75%);
   box-shadow:0 -6px 70px rgba(124,196,255,.28),inset 0 3px 0 rgba(150,210,255,.45)}
 @keyframes twinkle{from{opacity:.2}to{opacity:.85}}
-:root[data-theme="light"] .sky{display:none}
 
 /* top bar */
 .topbar{position:sticky;top:0;z-index:20;border-bottom:1px solid var(--line);background:rgba(4,8,20,.72);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding-top:env(safe-area-inset-top,0px)}
-:root[data-theme="light"] .topbar{background:rgba(255,255,255,.85)}
 .topbar-in{display:flex;align-items:center;gap:1rem;min-height:4rem}
 .brand{display:inline-flex;align-items:center;gap:.6rem;color:var(--fg);text-decoration:none;font-weight:800;font-size:1.1rem;letter-spacing:-.01em}
 .logo{width:2.1rem;height:2.1rem;flex:none}
 .logo-globe{fill:#0f2350;stroke:var(--acc);stroke-width:2}
 .logo-lines{fill:none;stroke:var(--acc);stroke-width:1.4;opacity:.85}
 .logo-waves{fill:none;stroke:var(--gold);stroke-width:2;stroke-linecap:round}
-:root[data-theme="light"] .logo-globe{fill:#dbe7ff}
 .topbar nav{display:flex;gap:.25rem;margin-left:auto}
 .topbar nav a{color:var(--mut);text-decoration:none;font-weight:600;font-size:.95rem;padding:.5rem .75rem;border-radius:999px}
 .topbar nav a:hover{color:var(--fg);background:var(--btn)}
-.theme-btn{min-height:2.5rem;padding:.35rem .9rem;font-size:.9rem}
 
 /* hero */
 .hero{padding:clamp(3rem,9vw,6.5rem) 0 clamp(2.5rem,6vw,4rem)}
@@ -148,6 +136,8 @@ button.subtle{min-height:2.3rem;padding:.3rem .9rem;font-size:.92rem;font-weight
 .ico-next{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16 5h2v14h-2zM4 5v14l11-7z'/%3E%3C/svg%3E")}
 .ico-replay{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 5V1L6.5 6 12 11V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z'/%3E%3C/svg%3E")}
 .ico-desc{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 4h18v12H9l-6 5z'/%3E%3C/svg%3E")}
+.ico-dl{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11 3h2v9.2l3.3-3.3 1.4 1.4L12 16 6.3 10.3l1.4-1.4 3.3 3.3zM5 18h14v2H5z'/%3E%3C/svg%3E")}
+#dl{margin-left:auto}
 .ico-help{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 16h-2v-2h2zm2-7.5-.9.9c-.7.7-1.1 1.3-1.1 2.6h-2v-.5c0-1.1.4-2.1 1.2-2.8l1.2-1.3A1.8 1.8 0 0 0 14 8a2 2 0 0 0-4 0H8a4 4 0 0 1 8 0c0 .9-.4 1.8-1 2.5z'/%3E%3C/svg%3E")}
 .field{display:flex;flex-direction:column;gap:.4rem;font-weight:650;font-size:1rem}
 section>.field{margin:1rem 0}
@@ -156,6 +146,21 @@ select,input[type=number],input[type=text]{width:100%;min-height:2.9rem;padding:
 select{appearance:none;-webkit-appearance:none;padding-right:2.6rem;cursor:pointer;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%238793a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right .9rem center;background-size:1rem}
+/* Chrysanthos: our own look for the open dropdown list too. "appearance: base-select" keeps the real <select>
+   (so screen readers and the keyboard work exactly the same) and only lets us style it. Browsers that don't
+   support it yet simply show their normal menu. */
+@supports (appearance:base-select){
+  select,select::picker(select){appearance:base-select}
+  select{display:flex;align-items:center}
+  select::picker-icon{display:none} /* we already draw our own chevron */
+  select::picker(select){margin-top:.35rem;padding:.4rem;border:1px solid var(--line-2);border-radius:14px;background:#0b1430;color:var(--fg);
+    box-shadow:0 24px 60px -18px rgba(0,0,0,.85),0 0 0 1px rgba(0,0,0,.4);min-width:anchor-size(width)}
+  select option{display:flex;align-items:center;gap:.6rem;padding:.65rem .85rem;border-radius:10px;font-weight:500;cursor:pointer}
+  select option::checkmark{order:1;margin-left:auto;color:var(--gold);font-weight:800}
+  select option:hover,select option:focus-visible{background:rgba(124,196,255,.14);outline:none}
+  select option:checked{background:linear-gradient(90deg,rgba(124,196,255,.24),rgba(177,140,255,.18));font-weight:700}
+  select option:disabled{opacity:.45;cursor:not-allowed}
+}
 input[type=file]{width:100%;min-height:2.9rem;padding:.35rem;border:2px dashed var(--field-bd);border-radius:var(--r-sm);background:var(--sunken);color:var(--mut);font-size:1rem;font-weight:400;cursor:pointer}
 input[type=file]::file-selector-button{font:inherit;font-weight:650;margin-right:1rem;padding:.35rem 1.1rem;border:1.5px solid var(--field-bd);border-radius:999px;background:var(--btn);color:var(--fg);cursor:pointer}
 input[type=file]:hover::file-selector-button{background:var(--btn-hover)}
@@ -225,7 +230,7 @@ kbd{font:700 .86em var(--mono);padding:.2rem .55rem;border:1px solid var(--line-
 .disclaimer{margin-top:2rem;font-size:.9rem;text-align:center}
 
 /* small screens */
-@media (max-width:52rem){.topbar nav{display:none}.theme-btn{margin-left:auto}}
+@media (max-width:52rem){.topbar nav{display:none}}
 @media (max-width:40rem){
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stage{grid-template-columns:minmax(0,1fr)}.meter{display:none}
