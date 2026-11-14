@@ -37,6 +37,15 @@ It opens on real NASA data: **Earth's night lights, 2012 to 2023** (NASA Black M
 
 `image_describer.py` does the same from the command line: it writes a stereo WAV file and prints a text description of every frame.
 
+## Validation
+
+How we checked that what you hear matches the data:
+
+- **Colour → number.** We drew made-up maps with known values in four colour scales (viridis, inferno, blue-white-red and rainbow), saved them as JPEG (quality 85) and read them back with the app. The average error was about 0.5% of the colour scale's range, and 95% of the map was within 1.3%. Every pixel with data was found, and no grey "no data" area was read as data (leaving out border pixels, which mix two colours).
+- **Against a published NASA result.** NASA reported that nitrogen dioxide (NO₂) in March 2020 was about 30% lower than the March 2015–19 average along the I-95 corridor from Washington, DC to Boston, measured by the OMI instrument on the Aura satellite ([NASA, April 2020](https://www.nasa.gov/centers-and-facilities/goddard/nasa-satellite-data-show-30-percent-drop-in-air-pollution-over-northeast-u-s)). Reading the same two NASA images (the air pollution example in "Choose a map"), the app finds Washington −37%, Philadelphia −31%, Hartford −30%, New York −25% and Baltimore −22%, and −20% for the corridor as a whole. It reads less than NASA mainly because the colour scale stops at 10: before 2020 the most polluted spots were darker than the top of the scale, so they count as 10 and the drop looks smaller. Boston, near the edge of the map, doesn't show the drop in our reading.
+
+Limits: values are read from pictures, not from the original data files, so they are approximate. Places and coordinates assume a plain latitude/longitude grid, so on maps drawn in another projection (like the NO₂ example) they are approximate too.
+
 ## Repository contents
 
 ```
@@ -55,7 +64,7 @@ SECURITY.md             how to report a security problem, what happens to your d
 
 ## Getting started
 
-**Web app.** Open `index.html` in Chrome, Edge, Firefox or Safari and press Play (or Space). Pick another map under "Choose a map", or add your own frames with "Add your own maps" right under it. "Choose a map" also has an example that shows how: two NASA images of air pollution over New York (March 2015–19 average and March 2020), added just like your own would be. It also works as-is on GitHub Pages.
+**Web app.** Open `index.html` in Chrome, Edge, Firefox or Safari and press Play (or Space). New here? "Take the 1-minute tour" (or `T`) plays a short guided demo with a voice explaining it. Pick another map under "Choose a map", or add your own frames with "Add your own maps" right under it. "Choose a map" also has an example that shows how: two NASA images of air pollution over New York (March 2015–19 average and March 2020), added just like your own would be. It also works as-is on GitHub Pages.
 
 **Command line** (Python 3.9+, the team uses 3.13). Works the same on Windows and Mac; on Windows use `py` if `python` isn't found.
 
