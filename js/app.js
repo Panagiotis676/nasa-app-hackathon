@@ -45,7 +45,8 @@ function tick(){const now=performance.now();pos+=(now-last)/1000/(+$('speed').va
 if(pos>=1){if(fIdx<frames.length-1)goTo(fIdx+1);else if($('loop').checked)goTo(0);else{pause();pos=1;draw();announce('End of frames.');return;}}
 const f=frames[fIdx],col=Math.min(f.W-1,Math.floor(pos*f.W)),t=ac.currentTime;for(let b=0;b<12;b++)voices[b].gain.setTargetAtTime(Math.pow(f.B[b*f.W+col],1.5)*.07,t,.04);if(pan)pan.pan.setTargetAtTime(pos*2-1,t,.04);draw();}
 async function play(){if(!frames.length){announce('Add frames first.');return;}initAudio();await ac.resume();if(pos>=1)pos=0;playing=true;last=performance.now();clearInterval(timer);timer=setInterval(tick,30);$('play').textContent='Pause';}
-function pause(){playing=false;clearInterval(timer);if(ac)voices.forEach(g=>g.gain.setTargetAtTime(0,ac.currentTime,.05));$('play').textContent='Play';}
+// Chrysanthos: Pause now stops the voice too, not only the music. Before, it kept talking until the sentence was finished.
+function pause(){playing=false;clearInterval(timer);if(ac)voices.forEach(g=>g.gain.setTargetAtTime(0,ac.currentTime,.05));if('speechSynthesis' in window)speechSynthesis.cancel();$('live').textContent='';$('play').textContent='Play';}
 const toggle=()=>playing?pause():play();
 function step(d){const i=fIdx+d;if(i<0||i>=frames.length){announce(d>0?'This is the last frame.':'This is the first frame.');return;}goTo(i);}
 function replay(){pos=0;draw();if(!playing)play();}
