@@ -34,6 +34,8 @@ a{color:var(--acc);text-underline-offset:3px}
 .skip{position:absolute;left:1rem;top:-4rem;z-index:50;padding:.7rem 1.1rem;border-radius:10px;background:var(--focus);color:#111;font-weight:800;text-decoration:none}
 .skip:focus{top:1rem}
 :focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+/* Chrysanthos: sections get focus when a link inside the page takes you there, no ring around the whole section */
+[tabindex="-1"]:focus{outline:none}
 
 /* stars + the glow of the Earth's atmosphere at the bottom of the screen */
 .sky{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;
@@ -115,7 +117,8 @@ canvas{display:block;width:100%;height:auto}
 .meter i::before{left:0;width:calc(var(--u,0) * 100%);background:linear-gradient(90deg,rgba(255,201,77,.35),var(--up));box-shadow:0 0 12px rgba(255,201,77,.5)}
 .meter i::after{right:0;width:calc(var(--d,0) * 100%);background:linear-gradient(270deg,rgba(95,157,255,.35),var(--down))}
 .timeline{display:flex;flex-wrap:wrap;gap:.4rem;margin:.9rem 0 0}
-.timeline button{min-height:2.5rem;min-width:3.6rem;padding:.3rem .65rem;border-radius:10px;font:700 .85rem/1 var(--mono);letter-spacing:.04em}
+/* Chrysanthos: 44 px tall, the size a finger needs on a phone (they were 40) */
+.timeline button{min-height:2.75rem;min-width:3.6rem;padding:.3rem .65rem;border-radius:10px;font:700 .85rem/1 var(--mono);letter-spacing:.04em}
 .timeline button[aria-current="true"]{background:linear-gradient(90deg,var(--acc),var(--acc-2));color:var(--on-acc);border-color:transparent}
 
 /* buttons and form controls: one look for all of them */
@@ -124,7 +127,7 @@ button{min-height:2.9rem;padding:.5rem 1.15rem;border:1.5px solid var(--field-bd
 button:hover{background:var(--btn-hover)}
 button:active{transform:translateY(1px)}
 button:disabled{opacity:.5;cursor:not-allowed}
-button.subtle{min-height:2.3rem;padding:.3rem .9rem;font-size:.92rem;font-weight:600}
+button.subtle{min-height:2.75rem;padding:.3rem .9rem;font-size:.92rem;font-weight:600}
 .transport{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin-top:1.2rem}
 .btn-play{display:inline-flex;align-items:center;justify-content:center;gap:.6rem;min-width:10rem;min-height:3.6rem;font-size:1.2rem;font-weight:850;border:0;
   background:linear-gradient(90deg,var(--acc),var(--acc-2));color:var(--on-acc);box-shadow:0 12px 34px -12px rgba(124,196,255,.6)}
@@ -182,6 +185,8 @@ input[type=range]{width:12rem;max-width:100%;height:2.75rem;accent-color:var(--a
 .inline{display:inline-flex;flex-wrap:wrap;gap:.6rem;align-items:center;max-width:100%;font-weight:650}
 .inline select{width:auto;max-width:100%}
 .check{display:flex;gap:.7rem;align-items:flex-start;cursor:pointer}
+/* Chrysanthos: a one-line checkbox (Loop) gets a 44 px tall label so it is easy to hit with a finger */
+.check.inline{min-height:2.75rem;align-items:center}
 .grid{display:grid;gap:1rem;grid-template-columns:1fr;align-items:start;margin:1rem 0}
 .g4{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media (min-width:40rem){.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}}

@@ -392,6 +392,12 @@ async function loadExample(){if(exampleBusy)return;exampleBusy=true;
  catch(_err){announce('The example could not be loaded.');}
  finally{exampleBusy=false;}}
 $('startListen').addEventListener('click',()=>{if(!playing)play();});
+// Chrysanthos: links inside the page (the menu, "Start listening", the skip link) scroll to their section without leaving "#data"
+// in the address. With it there, a refresh could jump to that section instead of staying where you were.
+// Focus moves to the section too, like a normal link, so keyboard and screen reader users carry on from there.
+document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a[href^="#"]');if(!a)return;const id=a.getAttribute('href').slice(1),el=id&&document.getElementById(id);if(!el)return;
+ e.preventDefault();el.scrollIntoView({block:'start'});if(!el.hasAttribute('tabindex'))el.setAttribute('tabindex','-1');el.focus({preventScroll:true});});
+if(location.hash&&history.replaceState)history.replaceState(null,'',location.pathname+location.search);
 
 $('uploadList').addEventListener('click',e=>{const id=e.target&&e.target.dataset?e.target.dataset.remove:null;if(!id)return;uploaded=uploaded.filter(x=>itemKey(x)!==id);renderUploadList();if(!uploaded.length){sources=[];mode='images';pause();frames=[];draw();updStatus();announce('All uploaded frames were removed.');return;}if($('preset').value==='upload'){sources=uploaded;fIdx=0;rebuild();}});
 $('clearUploads').addEventListener('click',()=>{if(!uploaded.length)return;uploaded=[];sources=[];renderUploadList();if($('preset').value==='upload'){pause();frames=[];draw();updStatus();announce('All uploaded frames were removed. Add images to begin.');}});
