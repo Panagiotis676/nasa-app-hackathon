@@ -1,4 +1,4 @@
-// Chrysanthos: the "Try an example" maps, loaded only when that button is pressed.
+// Chrysanthos: the example in "Choose a map" (air pollution over New York), loaded only when it is picked.
 // Made from media/air-qual-1.jpg (March 2015-19 average) and media/2020_NO2_w_colorbar_date.jpg (March 2020), shrunk to 960 px wide
 // and stored as text so it also works when index.html is opened straight from the disk.
 // The legend box (title, colorbar, labels) is painted over with the sea colour so it isn't read as data; its colorbar

@@ -8,7 +8,7 @@
 <!-- Chrysanthos: everything is local (no web fonts, no trackers), so it also works offline by double-clicking.
      The ?v= number makes browsers fetch the new file after a change (GitHub Pages lets them keep old copies for 10 minutes,
      and new HTML with an old CSS/JS breaks the page). Change the number in all three places when you edit css, js or data. -->
-<link rel="stylesheet" href="css/style.css?v=20261114-9">
+<link rel="stylesheet" href="css/style.css?v=20261114-10">
 </head><body>
 <a class="skip" href="#player">Skip to the player</a>
 <div class="sky" aria-hidden="true"></div>
@@ -50,12 +50,12 @@
 </div>
 <!-- Chrysanthos: ready-made maps, so you can hear real NASA data without having to see the map to set it up -->
 <div class="grid g2">
-<label class="field">Choose a map <select id="preset"><option value="nightlights">NASA: Earth's night lights, 2012 to 2023</option><option value="upload" disabled>Your own images (use “Add your own maps”)</option></select></label>
+<label class="field">Choose a map <select id="preset"><option value="nightlights">NASA: Earth's night lights, 2012 to 2023</option><option value="example">NASA: air pollution over New York, before and during the 2020 lockdown</option><option value="upload" disabled>Your own images (use “Add your own maps”)</option></select></label>
 <!-- Chrysanthos: "hear the change" mode, one sweep of last minus first frame. See mkChange() in js/app.js -->
 <label class="field">Listen to <select id="view"><option value="frames">Every frame, one after another</option><option value="change">Only what changed, first to last frame</option></select></label>
 </div>
-<!-- Chrysanthos: your own maps start here, right next to the map, so you see the result straight away. "Try an example" loads two NASA images the same way -->
-<div class="row mine"><button id="addMaps" type="button" class="ico ico-up">Add your own maps</button><button id="tryExample" type="button" class="ico ico-try">Try an example: air pollution in 2020</button></div>
+<!-- Chrysanthos: your own maps start here, right next to the map, so you see the result straight away -->
+<div class="row mine"><button id="addMaps" type="button" class="ico ico-up">Add your own maps</button></div>
 <p id="intro" class="intro"></p>
 
 <p id="status" class="status">Loading…</p>
@@ -169,5 +169,5 @@
 <p class="m disclaimer">This is an independent project, not an official NASA product.</p>
 </footer>
 <!-- Chrysanthos: preset data, built by tools/build_nightlights.py. If it's missing the page falls back to the demo -->
-<script src="data/nightlights.js?v=20261114-9"></script>
-<script id="appJs" src="js/app.js?v=20261114-9"></script></body></html>
+<script src="data/nightlights.js?v=20261114-10"></script>
+<script id="appJs" src="js/app.js?v=20261114-10"></script></body></html>

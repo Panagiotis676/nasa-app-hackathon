@@ -324,27 +324,27 @@ function areaDown(im,sx,sy,sw,sh,m){
    const o=4*(j*W+i);out[o]=r/n;out[o+1]=g/n;out[o+2]=b/n;out[o+3]=a/n;}}
  return{data:out,width:W,height:H};}
 function prep(im,name,autoCrop){const k=S.crop,ac=autoCrop||{t:0,b:0,l:0,r:0},mix={t:Math.min(90,k.t+ac.t),b:Math.min(90,k.b+ac.b),l:Math.min(90,k.l+ac.l),r:Math.min(90,k.r+ac.r)},sx=im.width*mix.l/100,sy=im.height*mix.t/100,sw=Math.max(1,im.width*(1-(mix.l+mix.r)/100)),sh=Math.max(1,im.height*(1-(mix.t+mix.b)/100)),mk=m=>{const s=Math.min(1,m/Math.max(sw,sh)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(sw*s));c.height=Math.max(1,Math.round(sh*s));c.getContext('2d').drawImage(im,sx,sy,sw,sh,0,0,c.width,c.height);return c;},d=mk(720);let raw;if(S.gray)raw=areaDown(im,sx,sy,sw,sh,160);else{const a=mk(160);raw=a.getContext('2d').getImageData(0,0,a.width,a.height);}return{name:name.replace(/\.[^.]+$/,'').replace(/[_-]+/g,' '),raw,disp:d};}
-// Chrysanthos: same code as before, now a function so "Add your own maps" and "Try an example" share it. Afterwards it
+// Chrysanthos: same code as before, now a function so "Add your own maps" and the example in "Choose a map" share it. Afterwards it
 // opens the settings and brings the player back into view, so you hear and see the result straight away.
-async function addFiles(list,intro){const fl=[...list].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));if(!fl.length)return;announce('Loading '+fl.length+' images.');const keep=new Set(uploaded.map(itemKey));const add=[];try{for(const f of fl){const id=fileKey(f);if(keep.has(id))continue;add.push({id,name:f.name,img:await loadImg(f)});keep.add(id);}}catch(err){announce('Could not read '+err.message+'. Please use PNG or JPEG images.');return;}if(!add.length){announce('Those images are already loaded.');$('files').value='';return;}
+// (stay = don't move the page or the focus, used when the example is picked in the menu). Your own images replace the example.
+async function addFiles(list,intro,stay){if($('preset').value==='example')uploaded=[];const fl=[...list].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));if(!fl.length)return;announce('Loading '+fl.length+' images.');const keep=new Set(uploaded.map(itemKey));const add=[];try{for(const f of fl){const id=fileKey(f);if(keep.has(id))continue;add.push({id,name:f.name,img:await loadImg(f)});keep.add(id);}}catch(err){announce('Could not read '+err.message+'. Please use PNG or JPEG images.');return;}if(!add.length){announce('Those images are already loaded.');$('files').value='';return;}
 uploaded=[...uploaded,...add].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));renderUploadList();sources=uploaded;mode='images';preset=null;const o=$('preset').querySelector('[value=upload]');o.disabled=false;$('preset').value='upload';$('intro').textContent=intro||'Your own images, '+uploaded.length+' frames.';fIdx=0;$('files').value='';rebuild();
- $('mapSettings').open=true;$('player').scrollIntoView({block:'start'});$('play').focus({preventScroll:true});}
+ $('mapSettings').open=true;if(!stay){$('player').scrollIntoView({block:'start'});$('play').focus({preventScroll:true});}}
 $('files').addEventListener('change',e=>addFiles(e.target.files));
 $('addMaps').onclick=()=>$('files').click();
-// Chrysanthos: "Try an example" adds two NASA images (data/examples.js, only loaded when needed) exactly like an upload, with the
+// Chrysanthos: the example in "Choose a map" adds two NASA images (data/examples.js, only loaded when needed) exactly like an upload, with the
 // range, units and map area filled in. It replaces whatever was uploaded before.
-let exampleJs=null;
-async function loadExample(){const btn=$('tryExample');if(btn.disabled)return;btn.disabled=true;announce('Loading the example.');
+let exampleJs=null,exampleBusy=false;
+async function loadExample(){if(exampleBusy)return;exampleBusy=true;announce('Loading the example.');
  try{exampleJs=exampleJs||new Promise((ok,no)=>{const sc=document.createElement('script'),v=$('appJs').getAttribute('src').split('?')[1];sc.src='data/examples.js'+(v?'?'+v:'');sc.onload=ok;sc.onerror=()=>{exampleJs=null;no(new Error('examples.js'));};document.head.appendChild(sc);});
   await exampleJs;const X=window.EJ_EXAMPLE;
   // its colorbar sits inside the map, where auto-detection doesn't look, so it comes with the example, same as uploading it by hand
   $('cbar').value='';makeCustomLutFromLine(X.bar);manualCustomLut=true;$('cmap').value='custom';$('vmin').value=X.vmin;$('vmax').value=X.vmax;$('units').value=X.units;$('lat0').value=X.lat[0];$('lat1').value=X.lat[1];$('lon0').value=X.lon[0];$('lon1').value=X.lon[1];
   ['cropT','cropB','cropL','cropR'].forEach(k=>{$(k).value=0;});uploaded=[];
   const files=X.frames.map(f=>{const b=atob(f.src.split(',')[1]),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return new File([a],f.name,{type:'image/jpeg',lastModified:0});});
-  await addFiles(files,X.intro);}
+  await addFiles(files,X.intro,true);$('preset').value='example';}
  catch(_err){announce('The example could not be loaded.');}
- finally{btn.disabled=false;}}
-$('tryExample').onclick=loadExample;
+ finally{exampleBusy=false;}}
 $('startListen').addEventListener('click',()=>{if(!playing)play();});
 
 $('uploadList').addEventListener('click',e=>{const id=e.target&&e.target.dataset?e.target.dataset.remove:null;if(!id)return;uploaded=uploaded.filter(x=>itemKey(x)!==id);renderUploadList();if(!uploaded.length){sources=[];mode='images';pause();frames=[];draw();updStatus();announce('All uploaded frames were removed.');return;}if($('preset').value==='upload'){sources=uploaded;fIdx=0;rebuild();}});
@@ -352,6 +352,7 @@ $('clearUploads').addEventListener('click',()=>{if(!uploaded.length)return;uploa
 
 // Chrysanthos: load a ready-made map. Sets the colormap, range, units and extent for you, then plays like uploaded images.
 async function usePreset(id){pause();
+if(id==='example'){loadExample();return;}
 if(id==='demo'){setDemo();fIdx=0;rebuild('Demo with made-up data.');return;}
 if(id==='upload'){if(!uploaded.length)return;preset=null;sources=uploaded;mode='images';$('intro').textContent='Your own images, '+uploaded.length+' frames.';fIdx=0;rebuild();return;}
 const P=(window.EJ_PRESETS||{})[id];if(!P){announce('This map is missing, the file data/'+id+'.js was not found.');return;}
