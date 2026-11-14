@@ -8,6 +8,8 @@ let S,frames=[],uploaded=[],mode='demo',fIdx=0,pos=0,playing=false,timer,last,ac
 let sources=[],customLut=null,preset=null,booting=true;
 // Chrysanthos: view = 'frames' (play every frame) or 'change' (one sweep of last minus first frame), downVoices = the low buzz for "went down"
 let view='frames',downVoices=[];
+// Chrysanthos: Explore mode state, the cursor is kept in degrees so it stays put when the frame or the view changes
+let exploring=false,exLat=null,exLon=null,exDrag=false,exT=0;
 // Panagiotis: manualCustomLut = a colorbar image was uploaded by hand, autoBarState = colorbar found inside the frames
 let manualCustomLut=false,autoBarState=null;
 // Panagiotis: stop only the sound (used when Describe starts talking during playback)
@@ -128,7 +130,7 @@ function mkChange(a,b){
  for(let k=0;k<NB;k++)for(let x=0;x<W;x++){let c=0,tu=0,td=0;for(let y=e[k];y<e[k+1];y++){const v=d[y*W+x];if(v!==v)continue;c++;if(v>thr)tu+=v;else if(v<-thr)td-=v;}
   if(c>=Math.max(1,.3*(e[k+1]-e[k]))){bu[k*W+x]=tu/c;bd[k*W+x]=td/c;}}
  const bs=quantile([...bu,...bd].filter(v=>v>0),.98)||1,loud=v=>{const q=Math.pow(cl(v/bs),.7);return q<.08?0:q;};
- const f={name:'What changed, '+a.name+' to '+b.name,change:true,from:a,to:b,W,H,vals:d,B:bu.map(loud),Bd:bd.map(loud)};
+ const f={name:'What changed, '+a.name+' to '+b.name,change:true,from:a,to:b,W,H,vals:d,thr,big,B:bu.map(loud),Bd:bd.map(loud)};
  // where did it change most: add up the change inside each named region
  const up={},down={};let nv=0,nUp=0,nDown=0;
  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const v=d[y*W+x];if(v!==v)continue;nv++;if(Math.abs(v)<thr)continue;if(v>0)nUp++;else nDown++;
@@ -177,7 +179,7 @@ function renderTimeline(){const t=$('timeline'),key=frames.map(f=>f.name).join('
   b.setAttribute('aria-label',f.change?f.name:'Frame '+(i+1)+', '+f.name);b.onclick=()=>{if(i!==fIdx||!playing)goTo(i);};t.appendChild(b);});}
  // only the current frame's button is in the Tab order, so keyboard users reach Play quickly (arrows, N and P move between frames)
  Array.prototype.forEach.call(t.children||[],(b,i)=>{b.setAttribute('aria-current',i===fIdx?'true':'false');b.tabIndex=i===fIdx?0:-1;});}
-function draw(){const f=frames[fIdx];if(!f)return;const c=$('cv'),x=c.getContext('2d');if(c.width!==f.disp.width||c.height!==f.disp.height){c.width=f.disp.width;c.height=f.disp.height;}x.drawImage(f.disp,0,0);const px=pos*c.width,w=Math.max(3,c.width/120);x.fillStyle='#000';x.fillRect(px-w,0,2*w,c.height);x.fillStyle='#ffe600';x.fillRect(px-w/2,0,w,c.height);setLon();}
+function draw(){const f=frames[fIdx];if(!f)return;const c=$('cv'),x=c.getContext('2d');if(c.width!==f.disp.width||c.height!==f.disp.height){c.width=f.disp.width;c.height=f.disp.height;}x.drawImage(f.disp,0,0);if(exploring){drawCursor(x,c);return;}const px=pos*c.width,w=Math.max(3,c.width/120);x.fillStyle='#000';x.fillRect(px-w,0,2*w,c.height);x.fillStyle='#ffe600';x.fillRect(px-w/2,0,w,c.height);setLon();}
 const updStatus=()=>{const f=frames[fIdx];$('tmMode').textContent=f&&f.change?'Change mode':'Every frame';renderTimeline();$('status').textContent=!f?'No frames loaded.':f.change?f.name:'Frame '+(fIdx+1)+' of '+frames.length+': '+f.name;};
 const hz=i=>440*2**((48+12*Math.floor(i/5)+[0,2,4,7,9][i%5]-69)/12);
 function initAudio(){if(ac)return;ac=new(window.AudioContext||window.webkitAudioContext)();master=ac.createGain();master.gain.value=+$('vol').value;const comp=ac.createDynamicsCompressor(),bus=ac.createGain();pan=ac.createStereoPanner?ac.createStereoPanner():null;if(pan){bus.connect(pan);pan.connect(comp);}else bus.connect(comp);comp.connect(master);master.connect(ac.destination);
@@ -195,7 +197,7 @@ if(pos>=1){if(fIdx<frames.length-1)goTo(fIdx+1);else if($('loop').checked)goTo(0
 const f=frames[fIdx],col=Math.min(f.W-1,Math.floor(pos*f.W)),t=ac.currentTime;for(let b=0;b<12;b++){const k=b*f.W+col;voices[b].gain.setTargetAtTime(f.change?f.B[k]*.08:Math.pow(f.B[k],1.5)*.07,t,.04);downVoices[b].gain.setTargetAtTime(f.change?f.Bd[k]*.13:0,t,.04);}if(pan)pan.pan.setTargetAtTime(pos*2-1,t,.04);setMeter(f,col);draw();}
 // Chrysanthos (merging with Panagiotis's version): Play stops whatever the voice is saying and starts the sound
 // straight away, so you never press Play and get nothing
-async function play(){if(!frames.length){announce('Add frames first.');return;}if('speechSynthesis' in window)speechSynthesis.cancel();initAudio();try{await ac.resume();}catch(_err){return;}if(pos>=1)pos=0;playing=true;last=performance.now();clearInterval(timer);timer=setInterval(tick,30);setPlayBtn(true);}
+async function play(){if(!frames.length){announce('Add frames first.');return;}if(exploring)setExplore(false,true);if('speechSynthesis' in window)speechSynthesis.cancel();initAudio();try{await ac.resume();}catch(_err){return;}if(pos>=1)pos=0;playing=true;last=performance.now();clearInterval(timer);timer=setInterval(tick,30);setPlayBtn(true);}
 // Chrysanthos: Pause now stops the voice too, not only the music. Before, it kept talking until the sentence was finished.
 function pause(){playing=false;clearInterval(timer);if(ac)voices.concat(downVoices).forEach(g=>g.gain.setTargetAtTime(0,ac.currentTime,.05));if('speechSynthesis' in window)speechSynthesis.cancel();$('live').textContent='';setPlayBtn(false);}
 const toggle=()=>playing?pause():play();
@@ -392,11 +394,65 @@ async function downloadSound(){
  finally{btn.disabled=false;btn.textContent='Download sound';}}
 $('dl').addEventListener('click',downloadSound);
 $('vol').addEventListener('input',()=>{if(master)master.gain.value=+$('vol').value;});
+// Chrysanthos: Explore mode. E (or the button) stops playback and lets you walk around the map with the arrow keys,
+// a click or a finger. Every step plays one short note for that spot, Enter says the place and the value in words.
+const latR=()=>[Math.min(S.lat0,S.lat1),Math.max(S.lat0,S.lat1)],lonR=()=>[Math.min(S.lon0,S.lon1),Math.max(S.lon0,S.lon1)];
+function exClamp(la,lo){const a=latR(),o=lonR();return[Math.max(a[0],Math.min(a[1],la)),Math.max(o[0],Math.min(o[1],lo))];}
+// average of a small patch (about 1/72 of the map wide) around the point, NaN if none of it has data
+function exAvg(vals,W,H,la,lo){const x=Math.round((lo-S.lon0)/(S.lon1-S.lon0)*W-.5),y=Math.round((S.lat1-la)/(S.lat1-S.lat0)*H-.5),rx=Math.max(1,Math.round(W/72)),ry=Math.max(1,Math.round(H/36));let s=0,n=0;
+ for(let j=Math.max(0,y-ry);j<=Math.min(H-1,y+ry);j++)for(let i=Math.max(0,x-rx);i<=Math.min(W-1,x+rx);i++){const v=vals[j*W+i];if(v===v){s+=v;n++;}}return n?s/n:NaN;}
+// 0..1 loudness for a value, same idea as the sweep: the colour scale in normal mode, size of the change in change mode
+function exLevel(f,v){if(v!==v)return 0;if(f.change)return Math.abs(v)<f.thr?0:Math.pow(cl(Math.abs(v)/f.big),.7);return cl((v-S.vmin)/(S.vmax-S.vmin));}
+function drawCursor(x,c){const px=(exLon-S.lon0)/(S.lon1-S.lon0)*c.width,py=(S.lat1-exLat)/(S.lat1-S.lat0)*c.height,lw=Math.max(1.5,c.width/360),r=Math.max(8,c.width/45);
+ // dark outline first so the yellow cross shows on bright and dark maps alike
+ [['#000',lw*3],['#ffe600',lw]].forEach(([col,w])=>{x.strokeStyle=col;x.lineWidth=w;x.beginPath();x.moveTo(0,py);x.lineTo(px-r,py);x.moveTo(px+r,py);x.lineTo(c.width,py);x.moveTo(px,0);x.lineTo(px,py-r);x.moveTo(px,py+r);x.lineTo(px,c.height);x.stroke();x.beginPath();x.arc(px,py,r,0,2*Math.PI);x.stroke();});
+ const ns=Math.round(exLat),ew=Math.round(exLon);$('tmLon').textContent='Lat '+Math.abs(ns)+'° '+(ns>=0?'N':'S')+' · Lon '+Math.abs(ew)+'° '+(ew>=0?'E':'W');}
+function exTone(){const f=frames[fIdx];if(!f)return;initAudio();ac.resume().catch(()=>{});
+ const v=exAvg(f.vals,f.W,f.H,exLat,exLon),t=ac.currentTime,out=ac.createGain();
+ if(ac.createStereoPanner){const p=ac.createStereoPanner();p.pan.value=Math.max(-1,Math.min(1,(exLon-S.lon0)/(S.lon1-S.lon0)*2-1));out.connect(p);p.connect(master);}else out.connect(master);
+ if(v!==v){// no data: a soft click, a few ms of fading noise
+  const n=ac.createBufferSource(),buf=ac.createBuffer(1,Math.round(ac.sampleRate*.015),ac.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length)**3;
+  n.buffer=buf;out.gain.value=.2;n.connect(out);n.start(t);return;}
+ const q=exLevel(f,v),b=Math.min(11,Math.max(0,Math.floor((S.lat1-exLat)/(S.lat1-S.lat0)*12))),fr=hz(11-b),peak=.03+.27*q;
+ out.gain.setValueAtTime(0,t);out.gain.linearRampToValueAtTime(peak,t+.02);out.gain.setValueAtTime(peak,t+.2);out.gain.linearRampToValueAtTime(0,t+.3);
+ if(f.change&&v<0&&q>0){// went down: the same low buzz as the sweep (sawtooth an octave lower, low-passed)
+  const o=ac.createOscillator(),lp=ac.createBiquadFilter();o.type='sawtooth';o.frequency.value=fr/2;lp.type='lowpass';lp.frequency.value=fr*1.5;o.connect(lp);lp.connect(out);o.start(t);o.stop(t+.32);}
+ else{const o2=ac.createOscillator(),g2=ac.createGain(),o=ac.createOscillator();o2.frequency.value=2*fr;g2.gain.value=.3;o2.connect(g2);g2.connect(out);o.frequency.value=fr;o.connect(out);[o,o2].forEach(k=>{k.start(t);k.stop(t+.32);});}
+ if(navigator.vibrate)try{navigator.vibrate(Math.round(20+180*q));}catch(_err){/* some browsers block it without a tap */}}
+function exGo(la,lo){[exLat,exLon]=exClamp(la,lo);exT=performance.now();draw();exTone();}
+function exMove(dLat,dLon,st){const [la,lo]=exClamp(exLat+dLat*st,exLon+dLon*st);
+ if(la===exLat&&lo===exLon){announce((dLat>0?'North':dLat<0?'South':dLon>0?'East':'West')+' edge of the map.');return;}exGo(la,lo);}
+const exHelp=()=>'Explore mode. The arrow keys move around the map, 10 degrees a step, or 30 with Shift. Each step plays that spot: higher pitch further north, left ear for west and right ear for east, '+
+ (frames[fIdx]&&frames[fIdx].change?'a clean tone where it went up and a low buzz where it went down':'louder for a higher value')+'. A soft click means no data. Enter says the place and the value. N and P still change the frame. Press E or Escape to leave.';
+function setExplore(on,quiet){if(on===exploring)return;if(on&&!frames.length){announce('Add frames first.');return;}
+ exploring=on;$('explore').setAttribute('aria-pressed',String(on));$('cv').classList.toggle('exploring',on);
+ if(on){pause();[exLat,exLon]=exLat===null?exClamp((S.lat0+S.lat1)/2,(S.lon0+S.lon1)/2):exClamp(exLat,exLon);draw();if(!quiet)say(exHelp());}
+ else{exDrag=false;draw();if(!quiet)announce('Explore mode off. The arrow keys change the frame again.');}}
+function exSpeak(){const f=frames[fIdx];if(!f)return;const v=exAvg(f.vals,f.W,f.H,exLat,exLon),pl=placeAt(exLat,exLon),ns=Math.round(exLat),ew=Math.round(exLon);
+ let t=(pl?pl+', ':'')+Math.abs(ns)+' degrees '+(ns>=0?'north':'south')+', '+Math.abs(ew)+' '+(ew>=0?'east':'west')+': ';
+ if(v!==v)t+='no data here.';
+ else if(f.change){const base=exAvg(f.from.vals,f.W,f.H,exLat,exLon);
+  if(Math.abs(v)<f.thr)t+='about the same from '+f.from.name+' to '+f.to.name+'.';
+  else{const p=S.vmin>=0&&base>0?Math.abs(100*v/base):NaN;t+='went '+(v>0?'up ':'down ')+(p===p?(p<10?p.toFixed(1):Math.round(p))+' percent':fmt(Math.abs(v))+u())+' from '+f.from.name+' to '+f.to.name+'.';}}
+ else{const q=exLevel(f,v),w=S.units==='brightness'?['dark','dim','medium','bright','very bright']:['very low','low','medium','high','very high'];t+=fmt(v)+u()+', '+w[Math.min(4,Math.floor(q*5))]+'.';}
+ say(t);}
+const exPoint=e=>{const r=$('cv').getBoundingClientRect();return[S.lat1-(e.clientY-r.top)/r.height*(S.lat1-S.lat0),S.lon0+(e.clientX-r.left)/r.width*(S.lon1-S.lon0)];};
+$('explore').onclick=()=>setExplore(!exploring);
+// a click or a tap on the map jumps there (and turns Explore on), dragging a finger keeps playing as it moves
+$('cv').addEventListener('pointerdown',e=>{if(!frames.length)return;if(!exploring)setExplore(true);exDrag=true;try{$('cv').setPointerCapture(e.pointerId);}catch(_err){/* not supported */}exGo(...exPoint(e));});
+$('cv').addEventListener('pointermove',e=>{if(exDrag&&exploring&&performance.now()-exT>120)exGo(...exPoint(e));});
+['pointerup','pointercancel'].forEach(n=>$('cv').addEventListener(n,()=>{exDrag=false;}));
 // Chrysanthos: + and - change the speed, ? reads all the shortcuts (both were in the plan in ARCHITECTURE.md)
-const SHORTCUTS='Keyboard shortcuts. Space: play or pause. Right arrow or N: next frame. Left arrow or P: previous frame. R: replay the frame. D: describe the frame. L: how to listen. C: switch between every frame and only what changed. Plus or minus: faster or slower. Question mark: read these shortcuts again.';
+const SHORTCUTS='Keyboard shortcuts. Space: play or pause. Right arrow or N: next frame. Left arrow or P: previous frame. R: replay the frame. D: describe the frame. L: how to listen. C: switch between every frame and only what changed. Plus or minus: faster or slower. E: explore the map, the arrow keys move around it and Enter says the place and the value. Escape or E again: leave Explore. Question mark: read these shortcuts again.';
 function changeSpeed(d){const s=$('speed'),i=s.selectedIndex+d;if(i<0||i>=s.options.length){announce(d>0?'This is already the fastest speed.':'This is already the slowest speed.');return;}s.selectedIndex=i;announce('Speed: '+s.options[i].text+'.');}
 // Chrysanthos: letters are read from the key's position when the layout isn't Latin, so D, L, C... also work with a Greek keyboard (it types δ, λ, ψ)
 document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const t=e.target.tagName;if(t==='INPUT'||t==='SELECT'||t==='TEXTAREA')return;let k=e.key.toLowerCase();if(k.length===1&&!/[a-z0-9 ?+\-=_]/.test(k)&&/^Key[A-Z]$/.test(e.code||''))k=e.code.slice(3).toLowerCase();if(e.code==='Slash'&&e.shiftKey)k='?';
+// Chrysanthos: in Explore the arrows move the cursor instead of changing the frame, Enter speaks the spot. Enter on another button still presses it.
+if(k==='e'){e.preventDefault();setExplore(!exploring);return;}
+if(exploring){const mv={arrowup:[1,0],arrowdown:[-1,0],arrowleft:[0,-1],arrowright:[0,1]}[k];
+ if(mv){e.preventDefault();exMove(mv[0],mv[1],e.shiftKey?30:10);return;}
+ if(k==='escape'){e.preventDefault();setExplore(false);return;}
+ if(k==='enter'&&!((t==='BUTTON'&&e.target.id!=='explore')||t==='A'||t==='SUMMARY')){e.preventDefault();exSpeak();return;}}
 if(k===' '){if(t==='BUTTON'||t==='SUMMARY'||t==='A')return;e.preventDefault();toggle();}
 else if(k==='arrowright'||k==='n'){e.preventDefault();step(1);}else if(k==='arrowleft'||k==='p'){e.preventDefault();step(-1);}
 else if(k==='r')replay();else if(k==='d')describeNow();else if(k==='l')say(legendText());else if(k==='c')setView(view==='change'?'frames':'change');

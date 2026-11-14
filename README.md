@@ -30,7 +30,8 @@ The Earth Jukebox (`index.html`) turns a series of map frames into sound, right 
 3. **Change over time.** Frames play in time order. Between frames, a rising or falling chime says whether the average went up or down. Each frame can be described in words, including the change since the previous frame and since the first one (as a percent, for data that can't go negative).
 4. **Hear only the change.** "Listen to → Only what changed" (or the `C` key) plays one sweep of the last frame minus the first: a bright, high tone where the value went up, a low buzz where it went down, silence where nothing changed. The voice then names the places that changed the most, and the picture shows increases in gold and decreases in blue.
 5. **Download sound.** The "Download sound" button saves what Play would play (every frame or only the change) as a stereo WAV file, with the chimes but without the spoken voice.
-6. **Accessible.** Everything works with the keyboard and a screen reader (or the built-in voice), and there is a "How to listen" guide.
+6. **Explore the map.** Press `E` (or "Explore the map") and move a cursor with the arrow keys, a click or a finger: each step plays a short note for that spot (pitch = latitude, left/right ear = longitude, loudness = value, a soft click = no data), `Enter` says the place and the value, and phones vibrate.
+7. **Accessible.** Everything works with the keyboard and a screen reader (or the built-in voice), and there is a "How to listen" guide.
 
 It opens on real NASA data: **Earth's night lights, 2012 to 2023** (NASA Black Marble, [SVS #5276](https://svs.gsfc.nasa.gov/5276/)), so you can press Play without setting anything up. Over that period the lights grow by about 32%, with a small dip in 2020. In "only what changed" mode you hear that the lights grew the most near China, the Middle East and India, and dimmed the most in western Europe (including Spain, Portugal and the UK) and Ukraine.
 
@@ -99,7 +100,7 @@ _Under discussion with the team._ The full proposed architecture and plan (by Ch
 
 - **Color → data value** _(done: `index.html` and `image_describer.py`)_. Most EIC visualizations use a color scale (temperature, sea ice, CO₂…). Reading each pixel's color back against that scale gives a real data value, so the 0–100 score means "how warm" or "how much ice" instead of "how red".
 - **Timeline mode.** Play a sequence of frames (e.g. 1980 → today) where each year becomes a note in a musical scale; warming raises the pitch and tension, with spoken year markers.
-- **Explore mode.** Move a finger, mouse or arrow keys across the map and hear the value under the cursor; left/right position maps to stereo panning, with vibration on phones.
+- **Explore mode** _(done: `E` key in `index.html`)_. Move a finger, mouse or arrow keys across the map and hear the value under the cursor; left/right position maps to stereo panning, with vibration on phones.
 - **Land-cover orchestra.** Classify pixels as water, vegetation, sand, ice or cloud; each class is an instrument whose volume follows its share of the image. In before/after comparisons you hear, for example, the forest fade away.
 - **Accessibility first.** Full keyboard control, screen-reader labels, an audio legend ("this is what cold sounds like") and a written description for every visualization.
 

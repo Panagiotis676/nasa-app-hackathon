@@ -20,7 +20,7 @@
 | GitHub Pages | ✅ Built | https://panagiotis676.github.io/nasa-app-hackathon/ |
 | Python pipeline → JSON track files | 🔄 Changed | No JSON step: the browser decodes the images itself. Python builds the ready-made maps (`tools/`) and has its own command-line version (`image_describer.py`). |
 | Tone.js | 🔄 Changed | Plain Web Audio API, nothing to load. |
-| Explore mode (arrow-key cursor, vibration) | ❌ Not built | The biggest idea left for later. |
+| Explore mode (arrow-key cursor, vibration) | ✅ Built | `E` or "Explore the map": arrow keys, click or touch move a cursor that plays the spot under it; `Enter` says the place and value; phones vibrate. |
 | Orchestra mode (land-cover instruments) | ❌ Not built | We focused on data maps instead of true-colour photos. |
 | 2–3 EIC visualizations | ❌ One so far | NASA night lights 2012–2023. Any other map can be loaded under "Your maps". |
 

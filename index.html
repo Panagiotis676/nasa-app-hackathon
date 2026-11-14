@@ -8,7 +8,7 @@
 <!-- Chrysanthos: everything is local (no web fonts, no trackers), so it also works offline by double-clicking.
      The ?v= number makes browsers fetch the new file after a change (GitHub Pages lets them keep old copies for 10 minutes,
      and new HTML with an old CSS/JS breaks the page). Change the number in all three places when you edit css, js or data. -->
-<link rel="stylesheet" href="css/style.css?v=20261114-3">
+<link rel="stylesheet" href="css/style.css?v=20261114-7">
 </head><body>
 <a class="skip" href="#player">Skip to the player</a>
 <div class="sky" aria-hidden="true"></div>
@@ -63,7 +63,7 @@
 <div id="timeline" class="timeline" role="group" aria-label="Jump to a frame"></div>
 
 <div class="transport" role="group" aria-label="Playback controls">
-<button id="play" class="btn-play" data-state="paused">Play</button><button id="prev" class="ico ico-prev">Previous frame</button><button id="next" class="ico ico-next">Next frame</button><button id="replay" class="ico ico-replay">Replay frame</button><button id="desc" class="ico ico-desc">Describe frame</button><button id="leg" class="ico ico-help">How to listen</button></div>
+<button id="play" class="btn-play" data-state="paused">Play</button><button id="prev" class="ico ico-prev">Previous frame</button><button id="next" class="ico ico-next">Next frame</button><button id="replay" class="ico ico-replay">Replay frame</button><button id="desc" class="ico ico-desc">Describe frame</button><button id="leg" class="ico ico-help">How to listen</button><!-- Chrysanthos: Explore mode on/off (same as the E key) --><button id="explore" type="button" class="ico ico-explore" aria-pressed="false">Explore the map</button></div>
 <div class="row settings">
 <label class="inline">Speed <select id="speed"><option value="14">Slow, 14 seconds per frame</option><option value="8" selected>Normal, 8 seconds per frame</option><option value="4">Fast, 4 seconds per frame</option></select></label>
 <label class="check inline"><input type="checkbox" id="loop"> Loop</label>
@@ -141,6 +141,9 @@
 <li><span class="k"><kbd>L</kbd></span> how to listen</li>
 <li><span class="k"><kbd>C</kbd></span> switch between every frame and only what changed</li>
 <li><span class="k"><kbd>+</kbd> or <kbd>-</kbd></span> faster or slower</li>
+<li><span class="k"><kbd>E</kbd></span> explore the map: the arrow keys move around it (<kbd>Shift</kbd> for bigger steps), or click / tap the map</li>
+<li><span class="k"><kbd>Enter</kbd></span> in Explore, say the place and the value</li>
+<li><span class="k"><kbd>Esc</kbd> or <kbd>E</kbd></span> leave Explore</li>
 <li><span class="k"><kbd>?</kbd></span> read all the shortcuts</li></ul>
 </section>
 </main>
@@ -154,5 +157,5 @@
 <p class="m disclaimer">This is an independent project, not an official NASA product.</p>
 </footer>
 <!-- Chrysanthos: preset data, built by tools/build_nightlights.py. If it's missing the page falls back to the demo -->
-<script src="data/nightlights.js?v=20261114-3"></script>
-<script src="js/app.js?v=20261114-3"></script></body></html>
+<script src="data/nightlights.js?v=20261114-7"></script>
+<script src="js/app.js?v=20261114-7"></script></body></html>
