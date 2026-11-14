@@ -1,55 +1,122 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Earth Jukebox – hear NASA Earth visualizations</title>
+<title>Earth Jukebox – hear how our planet changes</title>
+<meta name="description" content="Earth Jukebox turns NASA Earth maps into sound, so blind and low-vision people can hear how our planet changes. Works with a keyboard and a screen reader.">
+<meta name="theme-color" content="#040814">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='11' fill='%23102a5c' stroke='%237cc4ff' stroke-width='2'/%3E%3Cpath d='M5 16h22M16 5c4 4 4 18 0 22M16 5c-4 4-4 18 0 22' fill='none' stroke='%237cc4ff' stroke-width='1.5'/%3E%3Ccircle cx='16' cy='16' r='14.5' fill='none' stroke='%23ffd166' stroke-width='1' stroke-dasharray='3 3'/%3E%3C/svg%3E">
+<!-- Chrysanthos: everything is local (no web fonts, no trackers), so it also works offline by double-clicking -->
 <link rel="stylesheet" href="css/style.css">
-</head><body><main>
-<div class="card hero">
-<p class="eyebrow">NASA Space Apps Challenge 2026 · The Earth Information Jukebox</p>
-<h1>Earth Jukebox</h1>
-<p class="lead">Hear a map of our planet. Each Earth science map frame is turned into live sound, so changes in the data can be heard, not just seen. Everything works with a keyboard and a screen reader.</p>
-<label class="check"><input type="checkbox" id="speech" checked> <span>Speak descriptions with the built-in voice <span class="m">(turn this off if you use a screen reader)</span></span></label>
-</div>
+</head><body>
+<a class="skip" href="#player">Skip to the player</a>
+<div class="sky" aria-hidden="true"></div>
 
-<section class="card" aria-labelledby="hp"><h2 id="hp">Player</h2>
+<header class="topbar">
+<div class="wrap topbar-in">
+<a class="brand" href="#top" aria-label="Earth Jukebox, back to top">
+<svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="12" class="logo-globe"/><path d="M8 20h24M20 8c5 5 5 19 0 24M20 8c-5 5-5 19 0 24" class="logo-lines"/><path d="M3 20a17 17 0 0 1 4-11M37 20a17 17 0 0 0-4-11M3 20a17 17 0 0 0 4 11M37 20a17 17 0 0 1-4 11" class="logo-waves"/></svg>
+<span>Earth Jukebox</span></a>
+<nav aria-label="Sections"><a href="#player">Player</a><a href="#how">How it works</a><a href="#data">Your maps</a><a href="#keys">Shortcuts</a></nav>
+<button id="themeBtn" class="theme-btn" aria-pressed="false">Light theme</button>
+</div>
+</header>
+
+<main id="top">
+<section class="hero wrap" aria-labelledby="h1">
+<p class="eyebrow"><span class="pulse" aria-hidden="true"></span>NASA Space Apps Challenge 2026 · The Earth Information Jukebox</p>
+<h1 id="h1">Hear how our <span class="grad">planet changes</span></h1>
+<p class="lead">Earth Jukebox turns NASA Earth maps into sound. Close your eyes and hear where the lights of our cities are, how bright they are, and how they grew from 2012 to 2023. Everything works with a keyboard and a screen reader.</p>
+<div class="cta"><a class="btn btn-primary" href="#player">Start listening</a><a class="btn btn-ghost" href="#how">How it works</a></div>
+<dl class="stats">
+<div><dt>Night lights, 2012 → 2023</dt><dd>+32%</dd></div>
+<div><dt>Years of NASA data</dt><dd>12</dd></div>
+<div><dt>Seconds to hear the planet</dt><dd>8</dd></div>
+<div><dt>To install</dt><dd>Nothing</dd></div>
+</dl>
+<label class="check voice"><input type="checkbox" id="speech" checked> <span>Speak descriptions with the built-in voice <span class="m">(turn this off if you use a screen reader)</span></span></label>
+</section>
+
+<section id="player" class="wrap panel console" aria-labelledby="hp">
+<div class="console-head">
+<div><p class="kicker">Mission console</p><h2 id="hp">Player</h2></div>
+<p class="telemetry" aria-hidden="true"><span id="tmMode">Every frame</span><span id="tmLon">Lon 180° W</span></p>
+</div>
 <!-- Chrysanthos: ready-made maps, so you can hear real NASA data without having to see the map to set it up -->
 <div class="grid g2">
-<label class="field">Choose a map <select id="preset"><option value="nightlights">NASA: Earth's night lights, 2012 to 2023</option><option value="demo">Demo: made-up temperature map</option><option value="upload" disabled>Your own images (add them under Data)</option></select></label>
+<label class="field">Choose a map <select id="preset"><option value="nightlights">NASA: Earth's night lights, 2012 to 2023</option><option value="demo">Demo: made-up temperature map</option><option value="upload" disabled>Your own images (add them under Your maps)</option></select></label>
 <!-- Chrysanthos: "hear the change" mode, one sweep of last minus first frame. See mkChange() in js/app.js -->
 <label class="field">Listen to <select id="view"><option value="frames">Every frame, one after another</option><option value="change">Only what changed, first to last frame</option></select></label>
 </div>
-<p id="intro"></p>
-<p id="status">Loading…</p>
-<div class="screen"><canvas id="cv" width="320" height="160" role="img" aria-label="Earth map frame"></canvas></div>
-<div class="controls" role="group" aria-label="Playback controls">
-<button id="play" class="p">Play</button><button id="prev">Previous frame</button><button id="next">Next frame</button><button id="replay">Replay frame</button><button id="desc">Describe frame</button><button id="leg">How to listen</button></div>
+<p id="intro" class="intro"></p>
+
+<p id="status" class="status">Loading…</p>
+<div class="stage">
+<div class="viewport">
+<span class="ax ax-n" aria-hidden="true">N · high pitch</span><span class="ax ax-s" aria-hidden="true">S · low pitch</span>
+<span class="ax ax-w" aria-hidden="true">W · left ear</span><span class="ax ax-e" aria-hidden="true">E · right ear</span>
+<div class="screen"><canvas id="cv" width="320" height="160" role="img" aria-label="Earth map frame"></canvas><span class="grat" aria-hidden="true"></span></div>
+</div>
+<!-- Chrysanthos: live meter of the 12 latitude bands (north at the top), only for people who can see it -->
+<div class="meter" id="meter" aria-hidden="true"></div>
+</div>
+<div id="timeline" class="timeline" role="group" aria-label="Jump to a frame"></div>
+
+<div class="transport" role="group" aria-label="Playback controls">
+<button id="play" class="btn-play" data-state="paused">Play</button><button id="prev" class="ico ico-prev">Previous frame</button><button id="next" class="ico ico-next">Next frame</button><button id="replay" class="ico ico-replay">Replay frame</button><button id="desc" class="ico ico-desc">Describe frame</button><button id="leg" class="ico ico-help">How to listen</button></div>
 <div class="row settings">
 <label class="inline">Speed <select id="speed"><option value="14">Slow, 14 seconds per frame</option><option value="8" selected>Normal, 8 seconds per frame</option><option value="4">Fast, 4 seconds per frame</option></select></label>
 <label class="check inline"><input type="checkbox" id="loop"> Loop</label>
 <label class="inline">Volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.6"></label></div>
+
+<div class="readout">
 <h3>Description of the current frame</h3>
 <p id="dtxt">Press Describe frame to hear a summary.</p>
+</div>
 <div id="live" class="sr" role="status" aria-live="polite"></div>
+
+<ul class="legend" aria-label="What the sounds mean">
+<li><span class="lg lg-pan" aria-hidden="true"></span>Left ear west, right ear east</li>
+<li><span class="lg lg-pitch" aria-hidden="true"></span>High pitch north, low pitch south</li>
+<li><span class="lg lg-loud" aria-hidden="true"></span>Louder means more</li>
+<li><span class="lg lg-up" aria-hidden="true"></span>Gold, clean tone: went up</li>
+<li><span class="lg lg-down" aria-hidden="true"></span>Blue, low buzz: went down</li>
+</ul>
 </section>
 
-<section class="card" aria-labelledby="hd"><h2 id="hd">Data</h2>
-<p class="m">The night lights map is real NASA data and is ready to play. To hear other data, export map frames from the NASA Earth Information Center and add them here in time order (files are sorted by name). Then choose the colormap (or upload a picture of the map’s colorbar) and the value range printed on it.</p>
+<section id="how" class="wrap" aria-labelledby="ha">
+<p class="kicker">The idea</p>
+<h2 id="ha">How it works</h2>
+<ol class="steps">
+<li class="panel"><span class="step-n" aria-hidden="true">01</span><h3>Colour to number</h3><p>Every pixel is matched back to the data value it stands for, using the map’s colour scale or a picture of its colorbar. For maps without one, like night lights, brightness is the value.</p></li>
+<li class="panel"><span class="step-n" aria-hidden="true">02</span><h3>A sweep across the planet</h3><p>The sound travels from west, in your left ear, to east, in your right ear. The map is cut into 12 bands of latitude on a pentatonic scale: north is high, south is low, and a higher value is louder. Silence means nothing there.</p></li>
+<li class="panel"><span class="step-n" aria-hidden="true">03</span><h3>Change over time</h3><p>Years play in order on the same loudness scale, so change stays audible. A rising chime between frames means the average went up and a falling one means it went down.</p></li>
+<li class="panel"><span class="step-n" aria-hidden="true">04</span><h3>Hear only the change</h3><p>“Only what changed” (or the C key) plays the last frame minus the first in one sweep: a bright, clean tone where it went up, a low buzz where it went down. The voice then names the places that changed the most.</p></li>
+</ol>
+<p class="m note">Colours decoded from an image are an approximation of the true data.</p>
+</section>
+
+<section id="data" class="wrap panel" aria-labelledby="hd">
+<p class="kicker">Bring your own data</p>
+<h2 id="hd">Listen to your own maps</h2>
+<p class="m">The night lights map is real NASA data and is ready to play. To hear other data, export map frames from the NASA Earth Information Center and add them here in time order (files are sorted by name). Then choose the colormap (or upload a picture of the map’s colorbar) and the value range printed on it. Your images never leave your browser.</p>
 <!-- Chrysanthos: the "Use demo frames" button moved into "Choose a map" at the top -->
 <label class="field">Add map frames (PNG or JPEG) <input type="file" id="files" accept="image/*" multiple></label>
- <div class="uploads" aria-live="polite">
- <div class="uploads-head"><strong>Uploaded frames</strong> <button type="button" id="clearUploads">Clear all</button></div>
- <p id="uploadHint" class="m hint">Add files in batches. New selections are appended and sorted by name.</p>
- <ul id="uploadList" class="upload-list"></ul>
- </div>
+<!-- Panagiotis: list of uploaded frames, add more in batches or remove them -->
+<div class="uploads" aria-live="polite">
+<div class="uploads-head"><strong>Uploaded frames</strong> <button type="button" id="clearUploads" class="subtle">Clear all</button></div>
+<p id="uploadHint" class="m hint">Add files in batches. New selections are appended and sorted by name.</p>
+<ul id="uploadList" class="upload-list"></ul>
+</div>
 <div class="grid g2">
 <label class="field">Colormap <select id="cmap"><option value="diverging">Blue, white, red (anomaly maps)</option><option value="viridis">Viridis</option><option value="inferno">Inferno</option><option value="plasma">Plasma</option><option value="jet">Rainbow (jet)</option><option value="gray">Brightness only (no colormap)</option><option value="custom" disabled>From your colorbar image</option></select></label>
 <!-- Chrysanthos: most NASA maps use their own colour scale, so the built-in ones often don't match. Same idea as --colorbar in image_describer.py -->
 <label class="field">Or upload the map’s colorbar <input type="file" id="cbar" accept="image/*"></label>
 </div>
- <p id="cmapDetect" class="detect-badge off">Colorbar status: waiting for images.</p>
- <label class="check"><input type="checkbox" id="autoColorbar" checked> <span>Auto-detect colorbars embedded in map frames</span></label>
- <p class="m hint">If a map includes a colorbar near an edge, the app can detect it, crop it from the map area, and use it as the colormap. You can still upload a manual colorbar to override.</p>
- <p id="autoColorbarStatus" class="m hint">Auto colorbar detection is idle.</p>
+<!-- Panagiotis: colorbars printed inside the frames are found automatically -->
+<p id="cmapDetect" class="detect-badge off">Colorbar status: waiting for images.</p>
+<label class="check"><input type="checkbox" id="autoColorbar" checked> <span>Auto-detect colorbars embedded in map frames</span></label>
+<p class="m hint">If a map includes a colorbar near an edge, the app can detect it, crop it from the map area, and use it as the colormap. You can still upload a manual colorbar to override.</p>
+<p id="autoColorbarStatus" class="m hint">Auto colorbar detection is idle.</p>
 <div class="grid g3"><label class="field">Minimum value <input type="number" id="vmin" step="any"></label><label class="field">Maximum value <input type="number" id="vmax" step="any"></label><label class="field">Units <input type="text" id="units" size="14"></label></div>
 <details><summary>Advanced: colour tolerance, map area and map extent</summary>
 <div class="grid g4"><label class="field">Colour match tolerance <input type="number" id="tol" value="50" min="5" max="150"></label></div>
@@ -59,7 +126,9 @@
 <div class="grid g4"><label class="field">South latitude <input type="number" id="lat0" value="-90"></label><label class="field">North latitude <input type="number" id="lat1" value="90"></label><label class="field">West longitude <input type="number" id="lon0" value="-180"></label><label class="field">East longitude <input type="number" id="lon1" value="180"></label></div></details>
 </section>
 
-<section class="card" aria-labelledby="hk"><h2 id="hk">Keyboard shortcuts</h2>
+<section id="keys" class="wrap" aria-labelledby="hk">
+<p class="kicker">No mouse needed</p>
+<h2 id="hk">Keyboard shortcuts</h2>
 <ul class="keys">
 <li><span class="k"><kbd>Space</kbd></span> play or pause</li>
 <li><span class="k"><kbd>Right arrow</kbd> or <kbd>N</kbd></span> next frame</li>
@@ -67,21 +136,17 @@
 <li><span class="k"><kbd>R</kbd></span> replay the frame</li>
 <li><span class="k"><kbd>D</kbd></span> describe the frame</li>
 <li><span class="k"><kbd>L</kbd></span> how to listen</li>
-<li><span class="k"><kbd>C</kbd></span> switch between every frame and only what changed</li></ul></section>
-
-<section class="card" aria-labelledby="ha"><h2 id="ha">How it works</h2>
-<ul class="how">
-<li><strong>Colour to number.</strong> Pixel colours are matched back to data values using the colormap you choose, or your colorbar image. For maps without a colormap, like night lights, brightness is the value.</li>
-<li><strong>Left to right.</strong> The sound sweeps west to east, with your left ear at the west edge and your right ear at the east edge.</li>
-<li><strong>Pitch and loudness.</strong> Pitch is latitude, with north higher and south lower, and loudness is the data value. Pitches use a pentatonic scale so any data sounds musical, and silence means no data.</li>
-<li><strong>Change over time.</strong> Values are scaled the same way across all frames, so changes over time stay audible. A rising chime between frames means the average went up, and a falling chime means it went down.</li>
-<li><strong>Hear only the change.</strong> Choose “Only what changed” (or press C) to hear one sweep of the last frame minus the first. A bright, high tone means the value went up there, a low buzz means it went down, and silence means no change. The voice then names the places that changed the most.</li>
-</ul>
-<p class="m">Colours decoded from an image are an approximation of the true data.</p></section>
+<li><span class="k"><kbd>C</kbd></span> switch between every frame and only what changed</li></ul>
+</section>
 </main>
-<footer>
-<p>Made for the NASA Space Apps Challenge 2026, “The Earth Information Jukebox”.</p>
-<p>Night lights data: NASA Scientific Visualization Studio (Black Marble). This is an independent prototype, not an official NASA product.</p>
+
+<footer class="wrap footer">
+<div class="foot-grid">
+<div><p class="brand-foot">Earth Jukebox</p><p class="m">Made for the NASA Space Apps Challenge 2026, “The Earth Information Jukebox”, by Chrysanthos Spyrou, Panayiotis Agathangelou and Chara Charalambous.</p></div>
+<div><p class="foot-h">Data</p><p class="m">Night lights: NASA Black Marble, <a href="https://svs.gsfc.nasa.gov/5276/">NASA Scientific Visualization Studio</a>.</p></div>
+<div><p class="foot-h">Code</p><p class="m"><a href="https://github.com/Panagiotis676/nasa-app-hackathon">Source on GitHub</a>. No accounts, no tracking, your images stay in your browser.</p></div>
+</div>
+<p class="m disclaimer">This is an independent project, not an official NASA product.</p>
 </footer>
 <!-- Chrysanthos: preset data, built by tools/build_nightlights.py. If it's missing the page falls back to the demo -->
 <script src="data/nightlights.js"></script>

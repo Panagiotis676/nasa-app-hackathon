@@ -11,7 +11,7 @@ let view='frames',downVoices=[];
 // Panagiotis: manualCustomLut = a colorbar image was uploaded by hand, autoBarState = colorbar found inside the frames
 let manualCustomLut=false,autoBarState=null;
 // Panagiotis: stop only the sound (used when Describe starts talking during playback)
-function pauseSonifyOnly(){playing=false;clearInterval(timer);if(ac)voices.concat(downVoices).forEach(g=>g.gain.setTargetAtTime(0,ac.currentTime,.05));$('play').textContent='Play';}
+function pauseSonifyOnly(){playing=false;clearInterval(timer);if(ac)voices.concat(downVoices).forEach(g=>g.gain.setTargetAtTime(0,ac.currentTime,.05));setPlayBtn(false);}
 function lutFor(n){if(n==='gray')return null;if(n==='custom')return customLut;const s=HEX[n].map(h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16))),L=[];for(let i=0;i<256;i++){const p=i/255*(s.length-1),k=Math.min(Math.floor(p),s.length-2),f=p-k;L.push([0,1,2].map(c=>s[k][c]+(s[k+1][c]-s[k][c])*f));}return L;}
 // Chrysanthos: brightness mode now uses the min/max boxes too. It was stuck on 0..1, and dim maps like night lights came out almost silent.
 // Also reads the trim boxes (crop).
@@ -126,8 +126,21 @@ function describeChange(f){
  return t+' '+pctWord(100*s.nUp/s.n)+' percent of the map '+w.more+' and '+pctWord(100*s.nDown/s.n)+' percent '+w.less+', the rest stayed about the same.';}
 
 const legendText=()=>view==='change'?'Listening guide for what changed. The sound sweeps from the west edge of the map in your left ear to the east edge in your right ear. Higher pitch means further north and lower pitch further south. '+changeHow()+' Press D afterwards to hear where it changed the most.':'Listening guide. The sound sweeps from the west edge of the map in your left ear to the east edge in your right ear. Higher pitch means further north and lower pitch further south. '+(preset&&preset.loudness?preset.loudness:'Louder means a higher value, from silence at '+S.vmin+u()+' or no data, up to full volume at '+S.vmax+u()+'.')+' When a new frame starts, a rising two-note chime means the average went up and a falling chime means it went down.';
-function draw(){const f=frames[fIdx];if(!f)return;const c=$('cv'),x=c.getContext('2d');if(c.width!==f.disp.width||c.height!==f.disp.height){c.width=f.disp.width;c.height=f.disp.height;}x.drawImage(f.disp,0,0);const px=pos*c.width,w=Math.max(3,c.width/120);x.fillStyle='#000';x.fillRect(px-w,0,2*w,c.height);x.fillStyle='#ffe600';x.fillRect(px-w/2,0,w,c.height);}
-const updStatus=()=>{const f=frames[fIdx];$('status').textContent=!f?'No frames loaded.':f.change?f.name:'Frame '+(fIdx+1)+' of '+frames.length+': '+f.name;};
+// Chrysanthos: things only sighted people see (the screen reader gets the same info from the status and the voice):
+// the Play/Pause icon, the 12-band level meter next to the map, the longitude readout and the clickable timeline.
+function setPlayBtn(on){const b=$('play');b.textContent=on?'Pause':'Play';b.dataset.state=on?'playing':'paused';if(!on&&frames[fIdx])setMeter(null,0);}
+let meterBars=null;
+function setMeter(f,col){if(!meterBars){const m=$('meter');meterBars=[];for(let b=0;b<12;b++){const i=document.createElement('i');m.appendChild(i);meterBars.push(i);}}
+ for(let b=0;b<12;b++){const k=f?b*f.W+col:0,st=meterBars[b].style;if(!st||!st.setProperty)continue;st.setProperty('--u',f?Math.sqrt(f.B[k]).toFixed(3):0);st.setProperty('--d',f&&f.change?Math.sqrt(f.Bd[k]).toFixed(3):0);}} // sqrt: only to make quiet bands visible
+function setLon(){const lo=S.lon0+Math.min(1,pos)*(S.lon1-S.lon0);$('tmLon').textContent='Lon '+Math.abs(lo).toFixed(0)+'° '+(lo>=0?'E':'W');}
+let tlKey='';
+function renderTimeline(){const t=$('timeline'),key=frames.map(f=>f.name).join('|');
+ if(key!==tlKey){tlKey=key;t.textContent='';frames.forEach((f,i)=>{const b=document.createElement('button');b.type='button';b.textContent=f.change?f.from.name+' → '+f.to.name:f.name;
+  b.setAttribute('aria-label',f.change?f.name:'Frame '+(i+1)+', '+f.name);b.onclick=()=>{if(i!==fIdx||!playing)goTo(i);};t.appendChild(b);});}
+ // only the current frame's button is in the Tab order, so keyboard users reach Play quickly (arrows, N and P move between frames)
+ Array.prototype.forEach.call(t.children||[],(b,i)=>{b.setAttribute('aria-current',i===fIdx?'true':'false');b.tabIndex=i===fIdx?0:-1;});}
+function draw(){const f=frames[fIdx];if(!f)return;const c=$('cv'),x=c.getContext('2d');if(c.width!==f.disp.width||c.height!==f.disp.height){c.width=f.disp.width;c.height=f.disp.height;}x.drawImage(f.disp,0,0);const px=pos*c.width,w=Math.max(3,c.width/120);x.fillStyle='#000';x.fillRect(px-w,0,2*w,c.height);x.fillStyle='#ffe600';x.fillRect(px-w/2,0,w,c.height);setLon();}
+const updStatus=()=>{const f=frames[fIdx];$('tmMode').textContent=f&&f.change?'Change mode':'Every frame';renderTimeline();$('status').textContent=!f?'No frames loaded.':f.change?f.name:'Frame '+(fIdx+1)+' of '+frames.length+': '+f.name;};
 const hz=i=>440*2**((48+12*Math.floor(i/5)+[0,2,4,7,9][i%5]-69)/12);
 function initAudio(){if(ac)return;ac=new(window.AudioContext||window.webkitAudioContext)();master=ac.createGain();master.gain.value=+$('vol').value;const comp=ac.createDynamicsCompressor(),bus=ac.createGain();pan=ac.createStereoPanner?ac.createStereoPanner():null;if(pan){bus.connect(pan);pan.connect(comp);}else bus.connect(comp);comp.connect(master);master.connect(ac.destination);
 for(let b=0;b<12;b++){const f=hz(11-b),g=ac.createGain(),g2=ac.createGain(),o1=ac.createOscillator(),o2=ac.createOscillator();g.gain.value=0;g2.gain.value=.3;o1.frequency.value=f;o2.frequency.value=2*f;o1.connect(g);o2.connect(g2);g2.connect(g);g.connect(bus);o1.start();o2.start();voices.push(g);}
@@ -141,12 +154,12 @@ function goTo(i){fIdx=i;pos=0;const f=frames[i],p=frames[i-1];let m=f.change?f.n
 const d=f.st.mean-p.st.mean,th=S.vmin>=0&&p.st.mean>0?p.st.mean*.01:(S.vmax-S.vmin)*.01;dir=d>th?'up':d<-th?'down':'same';m+=' Average '+(dir==='same'?'about the same':dir+' '+fmt(Math.abs(d))+u()+pct(d,p.st.mean))+'.';}if(playing&&dir)chime(dir);announce(m);draw();updStatus();}
 function tick(){const now=performance.now();pos+=(now-last)/1000/(+$('speed').value);last=now;
 if(pos>=1){if(fIdx<frames.length-1)goTo(fIdx+1);else if($('loop').checked)goTo(0);else{pause();pos=1;draw();announce(frames[fIdx].change?'End. Press D to hear where it changed the most.':'End of frames.');return;}}
-const f=frames[fIdx],col=Math.min(f.W-1,Math.floor(pos*f.W)),t=ac.currentTime;for(let b=0;b<12;b++){const k=b*f.W+col;voices[b].gain.setTargetAtTime(f.change?f.B[k]*.08:Math.pow(f.B[k],1.5)*.07,t,.04);downVoices[b].gain.setTargetAtTime(f.change?f.Bd[k]*.13:0,t,.04);}if(pan)pan.pan.setTargetAtTime(pos*2-1,t,.04);draw();}
+const f=frames[fIdx],col=Math.min(f.W-1,Math.floor(pos*f.W)),t=ac.currentTime;for(let b=0;b<12;b++){const k=b*f.W+col;voices[b].gain.setTargetAtTime(f.change?f.B[k]*.08:Math.pow(f.B[k],1.5)*.07,t,.04);downVoices[b].gain.setTargetAtTime(f.change?f.Bd[k]*.13:0,t,.04);}if(pan)pan.pan.setTargetAtTime(pos*2-1,t,.04);setMeter(f,col);draw();}
 // Chrysanthos (merging with Panagiotis's version): Play stops whatever the voice is saying and starts the sound
 // straight away, so you never press Play and get nothing
-async function play(){if(!frames.length){announce('Add frames first.');return;}if('speechSynthesis' in window)speechSynthesis.cancel();initAudio();try{await ac.resume();}catch(_err){return;}if(pos>=1)pos=0;playing=true;last=performance.now();clearInterval(timer);timer=setInterval(tick,30);$('play').textContent='Pause';}
+async function play(){if(!frames.length){announce('Add frames first.');return;}if('speechSynthesis' in window)speechSynthesis.cancel();initAudio();try{await ac.resume();}catch(_err){return;}if(pos>=1)pos=0;playing=true;last=performance.now();clearInterval(timer);timer=setInterval(tick,30);setPlayBtn(true);}
 // Chrysanthos: Pause now stops the voice too, not only the music. Before, it kept talking until the sentence was finished.
-function pause(){playing=false;clearInterval(timer);if(ac)voices.concat(downVoices).forEach(g=>g.gain.setTargetAtTime(0,ac.currentTime,.05));if('speechSynthesis' in window)speechSynthesis.cancel();$('live').textContent='';$('play').textContent='Play';}
+function pause(){playing=false;clearInterval(timer);if(ac)voices.concat(downVoices).forEach(g=>g.gain.setTargetAtTime(0,ac.currentTime,.05));if('speechSynthesis' in window)speechSynthesis.cancel();$('live').textContent='';setPlayBtn(false);}
 const toggle=()=>playing?pause():play();
 function step(d){if(frames[0]&&frames[0].change){announce('In this mode there is one sweep, from the first to the last frame. Press C to hear every frame.');return;}const i=fIdx+d;if(i<0||i>=frames.length){announce(d>0?'This is the last frame.':'This is the first frame.');return;}goTo(i);}
 function replay(){pos=0;draw();if(!playing)play();}
@@ -307,6 +320,10 @@ document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return
 if(k===' '){if(t==='BUTTON'||t==='SUMMARY'||t==='A')return;e.preventDefault();toggle();}
 else if(k==='arrowright'||k==='n'){e.preventDefault();step(1);}else if(k==='arrowleft'||k==='p'){e.preventDefault();step(-1);}
 else if(k==='r')replay();else if(k==='d')describeNow();else if(k==='l')say(legendText());else if(k==='c')setView(view==='change'?'frames':'change');});
+// Chrysanthos: light theme switch. The page is dark ("space") by default, some low-vision users read better on light.
+function setTheme(light){const r=document.documentElement;if(r&&r.setAttribute){if(light)r.setAttribute('data-theme','light');else r.removeAttribute('data-theme');}$('themeBtn').setAttribute('aria-pressed',light?'true':'false');try{localStorage.setItem('ej-theme',light?'light':'dark');}catch(_e){}}
+$('themeBtn').addEventListener('click',()=>setTheme(!(document.documentElement&&document.documentElement.getAttribute('data-theme')==='light')));
+try{if(localStorage.getItem('ej-theme')==='light')setTheme(true);}catch(_e){}
 setDemo();S=readS();frames=demoFrames();draw();updStatus();
 renderUploadList();
 setDetectBadge('off','waiting for images.');
