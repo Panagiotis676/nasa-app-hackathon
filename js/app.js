@@ -21,8 +21,6 @@ function readS(){const c=$('cmap').value,g=c==='gray',tr=id=>Math.max(0,Math.min
 const u=()=>S.units?' '+S.units:'';
 // Chrysanthos: decimals depend on the value range. With a fixed 2 decimals the night lights (avg ~0.004) all read as "0.00"
 const fmt=n=>n.toFixed(Math.max(0,Math.min(6,2-Math.floor(Math.log10(Math.abs(S.vmax-S.vmin)||1)))));
-// Chrysanthos: for data that can't go below zero (brightness, CO2...) "up 35 percent" is much easier to follow than a raw number
-const pct=(d,base)=>{if(!(S.vmin>=0&&base>0))return'';const p=Math.abs(100*d/base);return' ('+(d>=0?'up ':'down ')+(p<10?p.toFixed(1):Math.round(p))+' percent)';};
 // Panagiotis: Describe (isDescribe) pauses the sound so the description can be heard.
 // Chrysanthos: other announcements (like the year when a new frame starts) are spoken again while playing, otherwise
 // someone who can't see the screen doesn't know which year they're hearing.
@@ -31,21 +29,25 @@ function setSpeechStatus(text){
  el.textContent=text;el.hidden=!text;
  if(text)$('live').textContent=text;
 }
+const allVoices=()=>'speechSynthesis' in window&&speechSynthesis.getVoices?speechSynthesis.getVoices():[];
 function englishVoice(){
- const voices=speechSynthesis.getVoices(),exact=voices.find(v=>v.lang.toLowerCase()==='en-us');
+ const voices=allVoices(),exact=voices.find(v=>v.lang.toLowerCase()==='en-us');
  return exact||voices.find(v=>v.lang.toLowerCase().startsWith('en-'))||voices.find(v=>v.lang.toLowerCase()==='en');
 }
+// Chrysanthos: every utterance (descriptions, the tour, hover) goes through here, so all of them use the English voice.
+// On a computer set to Greek the browser otherwise reads the English text with the Greek system voice.
+// Until the browser has loaded its voices the list is empty (Chrome, right after the page opens), then ask for English by name only.
+function enUtter(t){const m=new SpeechSynthesisUtterance(t);m.lang='en-US';const v=englishVoice();if(v)m.voice=v;return m;}
 function speakEnglish(t){
  if(!('speechSynthesis' in window)){setSpeechStatus('English speech is not supported by this browser.');return false;}
  speechSynthesis.cancel();
- const voice=englishVoice();
- if(!voice){setSpeechStatus('No English voice is available. Install or enable an English system voice to hear descriptions.');return false;}
+ if(allVoices().length&&!englishVoice()){setSpeechStatus('No English voice is available. Install or enable an English system voice to hear descriptions.');return false;}
  setSpeechStatus('');
- const m=new SpeechSynthesisUtterance(t);m.lang='en-US';m.voice=voice;speechSynthesis.speak(m);return true;
+ speechSynthesis.speak(enUtter(t));return true;
 }
-if('speechSynthesis' in window)speechSynthesis.addEventListener('voiceschanged',()=>{if(englishVoice())setSpeechStatus('');});
+if('speechSynthesis' in window&&speechSynthesis.addEventListener)speechSynthesis.addEventListener('voiceschanged',()=>{if(englishVoice())setSpeechStatus('');});
 function announce(t,isDescribe=false){
-  if(booting)return;
+  if(booting||tourRunning)return; // Chrysanthos: the tour does its own talking, the app's own messages would only be started and cut
   if(isDescribe&&playing)pauseSonifyOnly();
   if('speechSynthesis' in window)speechSynthesis.cancel();
   if($('speech').checked)speakEnglish(t);
@@ -59,7 +61,8 @@ function hoverLabel(el){
  const label=el.closest('label')||(el.id&&Array.prototype.find.call(document.querySelectorAll('label'),x=>x.htmlFor===el.id));
  const text=(el.getAttribute('aria-label')||(tag==='select'&&el.selectedOptions.length?el.selectedOptions[0].textContent:label?label.textContent:el.textContent)||'').replace(/\s+/g,' ').trim();
  let kind='Control',action='Activate';
- if(tag==='a'){kind='Link';action='Open';}
+ if(tag==='button'||el.getAttribute('role')==='button'){kind='Button';action='Press';} // Chrysanthos: "Button: Play. Press it."
+ else if(tag==='a'){kind='Link';action='Open';}
  else if(tag==='select'){kind='Menu';action='Choose from';}
  else if(tag==='summary'){kind='Section';action='Open or close';}
  else if(tag==='input'){
@@ -70,17 +73,14 @@ function hoverLabel(el){
  const value=tag==='select'&&el.selectedOptions.length?' '+el.selectedOptions[0].textContent.trim():'';
  const name=text||value||'this control';
  const disabled=el.disabled||el.getAttribute('aria-disabled')==='true'?' Disabled.':'';
- const en=kind+': '+name+'. '+action+' it.'+disabled;
- return {en};
+ // Chrysanthos: English only (the team decided), the Greek copy that was spoken after it is gone
+ return kind+': '+name+'. '+action+' it.'+disabled;
 }
 // Chrysanthos: hover speech only while Explore is on, otherwise just moving the mouse around the page kept talking.
 // Not over the map itself: in Explore the map plays its own note under the mouse.
 function announceHover(el){
  if(booting||!exploring||tourRunning||el.id==='cv'||!$('speech').checked||!('speechSynthesis' in window))return;
- const msg=hoverLabel(el);speechSynthesis.cancel();
- const en=new SpeechSynthesisUtterance(msg.en);en.lang='en-US';
- const elGR=new SpeechSynthesisUtterance(msg.el);elGR.lang='el-GR';
- speechSynthesis.speak(en);speechSynthesis.speak(elGR);
+ speechSynthesis.cancel();speechSynthesis.speak(enUtter(hoverLabel(el)));
 }
 document.addEventListener('mouseover',e=>{
  const el=e.target&&e.target.closest?e.target.closest('a,button,select,input,summary,[role="button"],[role="link"],[role="slider"],[role="img"]'):null;
@@ -89,7 +89,10 @@ document.addEventListener('mouseover',e=>{
 document.addEventListener('mouseout',e=>{
  if(hoverTarget&&e.target===hoverTarget&&!hoverTarget.contains(e.relatedTarget))hoverTarget=null;
 });
-function say(t){$('dtxt').textContent=t;$('cv').setAttribute('aria-label','Earth map frame. '+t);announce(t,true);}
+function say(t){$('dtxt').textContent=t;mapLabel(t);announce(t,true);}
+// Chrysanthos: Chara's written descriptions (data/descriptions.json) describe what the picture looks like, so they are the map's
+// image description for screen readers. D still gives the numbers worked out from the data (average, where it's highest, change in %).
+function mapLabel(t){const f=frames[fIdx],w=f?frameDescription(f,fIdx):'';$('cv').setAttribute('aria-label',w||'Earth map frame.'+(t?' '+t:''));}
 function decode(raw){const d=raw.data,n=raw.width*raw.height,v=new Float32Array(n),t2=S.tol*S.tol,L=S.lut;for(let i=0;i<n;i++){const r=d[4*i],g=d[4*i+1],b=d[4*i+2];if(d[4*i+3]<128){v[i]=NaN;continue;}if(!L){v[i]=(.2126*r+.7152*g+.0722*b)/255;continue;}let best=1e9,bi=0;for(let k=0;k<256;k++){const c=L[k],e=(r-c[0])**2+(g-c[1])**2+(b-c[2])**2;if(e<best){best=e;bi=k;}}v[i]=best<=t2?S.vmin+(S.vmax-S.vmin)*bi/255:NaN;}return v;}
 function mkFrame(name,W,H,vals,disp){const B=12,f={name,W,H,vals,disp,B:new Float32Array(B*W)},e=[];for(let i=0;i<=B;i++)e.push(Math.round(i*H/B));let n=0,sum=0,mn=Infinity,mx=-Infinity,mi=0,nN=0,sN=0,nS=0,sS=0;
 for(let y=0;y<H;y++)for(let x=0;x<W;x++){const v=vals[y*W+x];if(v!==v)continue;n++;sum+=v;if(v<mn)mn=v;if(v>mx){mx=v;mi=y*W+x;}if(y<H/2){nN++;sN+=v;}else{nS++;sS+=v;}}
@@ -104,15 +107,15 @@ function frameDescription(f,i){
  const id=preset&&preset.id||$('preset').value,items=descriptions[id];
  return f.change?descriptions.change&&descriptions.change[id]||'':Array.isArray(items)?items[i]||'':'';
 }
-function describe(f,i){const written=frameDescription(f,i);if(written)return written;if(f.change)return describeChange(f);const s=f.st;if(!s.n)return'Frame '+(i+1)+': no readable data. Check the colormap, range and tolerance.';const x=s.mi%f.W,y=Math.floor(s.mi/f.W),la=S.lat1-y/Math.max(f.H-1,1)*(S.lat1-S.lat0),lo=S.lon0+x/Math.max(f.W-1,1)*(S.lon1-S.lon0),q=fmt;
-let t='Frame '+(i+1)+' of '+frames.length+', '+f.name+'. Data covers '+Math.round(100*s.n/(f.W*f.H))+' percent of the map. The average is '+q(s.mean)+u()+', ranging from '+q(s.mn)+' to '+q(s.mx)+u()+'. The highest value is near '+where(la,lo)+'. The northern half averages '+q(s.north)+u()+' and the southern half '+q(s.south)+u()+'.';
-const p=frames[i-1];if(p&&p.st.n)t+=' Compared with the previous frame, the average changed by '+(s.mean-p.st.mean>=0?'plus ':'minus ')+q(Math.abs(s.mean-p.st.mean))+u()+pct(s.mean-p.st.mean,p.st.mean)+'.';
+function describe(f,i){if(f.change)return describeChange(f);const s=f.st;if(!s.n)return'Frame '+(i+1)+': no readable data. Check the colormap, range and tolerance.';const x=s.mi%f.W,y=Math.floor(s.mi/f.W),la=S.lat1-y/Math.max(f.H-1,1)*(S.lat1-S.lat0),lo=S.lon0+x/Math.max(f.W-1,1)*(S.lon1-S.lon0),q=fmt;
+let t='Frame '+(i+1)+' of '+frames.length+', '+f.name+'. '+(s.n/(f.W*f.H)<.95?'Data covers '+Math.round(100*s.n/(f.W*f.H))+' percent of the map. ':'')+'The average is '+q(s.mean)+u()+', ranging from '+q(s.mn)+' to '+q(s.mx)+u()+'. The highest value is near '+where(la,lo)+'. The northern half averages '+q(s.north)+u()+' and the southern half '+q(s.south)+u()+'.';
+const p=frames[i-1];if(p&&p.st.n)t+=' Compared with the previous frame, the average '+chg(s.mean-p.st.mean,p.st.mean)+'.';
 // Chrysanthos: the big picture too, change since the first frame (e.g. 2012 to 2023)
-const f0=frames[0];if(i>1&&f0.st.n)t+=' Since the first frame, '+f0.name+', it changed by '+(s.mean-f0.st.mean>=0?'plus ':'minus ')+q(Math.abs(s.mean-f0.st.mean))+u()+pct(s.mean-f0.st.mean,f0.st.mean)+'.';return t;}
-async function loadDescriptions(){
- try{const r=await fetch('data/descriptions.json');if(!r.ok)throw new Error('descriptions.json');descriptions=await r.json();}
- catch(_err){descriptions={};}
-}
+const f0=frames[0];if(i>1&&f0.st.n)t+=' Since the first frame, '+f0.name+', it '+chg(s.mean-f0.st.mean,f0.st.mean)+'.';return t;}
+// Chrysanthos: "went up 1.9 percent" where a percent makes sense. It used to say "changed by plus 0.0001 brightness (up 1.9 percent)",
+// the same change twice, and the raw number means nothing to a listener. Data that can go negative (°C anomaly...) keeps the number.
+function chg(d,base){const p=S.vmin>=0&&base>0?Math.abs(100*d/base):null;return p!==null?(p<.05?'stayed about the same':'went '+(d>=0?'up ':'down ')+(p<10?p.toFixed(1):Math.round(p))+' percent'):'changed by '+(d>=0?'plus ':'minus ')+fmt(Math.abs(d))+u();}
+async function loadDescriptions(){descriptions=window.EJ_DESCRIPTIONS||{};} // data/descriptions.js
 // ---------------------------------------------------------------------------------------------
 // Chrysanthos: "hear the change" mode. Instead of playing every frame one after another, play ONE
 // sweep of (last frame minus first frame): a bright high tone where the value went up, a low buzz
@@ -207,7 +210,7 @@ function renderTimeline(){const t=$('timeline'),key=frames.map(f=>f.name).join('
  // only the current frame's button is in the Tab order, so keyboard users reach Play quickly (arrows, N and P move between frames)
  Array.prototype.forEach.call(t.children||[],(b,i)=>{b.setAttribute('aria-current',i===fIdx?'true':'false');b.tabIndex=i===fIdx?0:-1;});}
 function draw(){const f=frames[fIdx];if(!f)return;const c=$('cv'),x=c.getContext('2d');if(c.width!==f.disp.width||c.height!==f.disp.height){c.width=f.disp.width;c.height=f.disp.height;}x.drawImage(f.disp,0,0);if(exploring){drawCursor(x,c);return;}const px=pos*c.width,w=Math.max(3,c.width/120);x.fillStyle='#000';x.fillRect(px-w,0,2*w,c.height);x.fillStyle='#ffe600';x.fillRect(px-w/2,0,w,c.height);setLon();}
-const updStatus=()=>{const f=frames[fIdx];$('tmMode').textContent=f&&f.change?'Change mode':'Every frame';renderTimeline();$('status').textContent=!f?'No frames loaded.':f.change?f.name:'Frame '+(fIdx+1)+' of '+frames.length+': '+f.name;};
+const updStatus=()=>{const f=frames[fIdx];$('tmMode').textContent=f&&f.change?'Change mode':'Every frame';renderTimeline();$('status').textContent=!f?'No frames loaded.':f.change?f.name:'Frame '+(fIdx+1)+' of '+frames.length+': '+f.name;mapLabel('');};
 const hz=i=>440*2**((48+12*Math.floor(i/5)+[0,2,4,7,9][i%5]-69)/12);
 function initAudio(){if(ac)return;ac=new(window.AudioContext||window.webkitAudioContext)();master=ac.createGain();master.gain.value=+$('vol').value;const comp=ac.createDynamicsCompressor(),bus=ac.createGain();pan=ac.createStereoPanner?ac.createStereoPanner():null;if(pan){bus.connect(pan);pan.connect(comp);}else bus.connect(comp);comp.connect(master);master.connect(ac.destination);
 for(let b=0;b<12;b++){const f=hz(11-b),g=ac.createGain(),g2=ac.createGain(),o1=ac.createOscillator(),o2=ac.createOscillator();g.gain.value=0;g2.gain.value=.3;o1.frequency.value=f;o2.frequency.value=2*f;o1.connect(g);o2.connect(g2);g2.connect(g);g.connect(bus);o1.start();o2.start();voices.push(g);}
@@ -215,10 +218,14 @@ for(let b=0;b<12;b++){const f=hz(11-b),g=ac.createGain(),g2=ac.createGain(),o1=a
 // (sawtooth through a low-pass filter), so it can't be mistaken for the clean tone that means "went up"
 for(let b=0;b<12;b++){const f=hz(11-b)/2,o=ac.createOscillator(),lp=ac.createBiquadFilter(),g=ac.createGain();o.type='sawtooth';o.frequency.value=f;lp.type='lowpass';lp.frequency.value=f*3;g.gain.value=0;o.connect(lp);lp.connect(g);g.connect(bus);o.start();downVoices.push(g);}}
 function chime(dir){const sq=dir==='up'?[660,880]:dir==='down'?[880,660]:[770];sq.forEach((fr,k)=>{const o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime+k*.18;o.type='triangle';o.frequency.value=fr;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.25,t+.02);g.gain.exponentialRampToValueAtTime(.001,t+.3);o.connect(master);g.connect(master);o.disconnect();o.connect(g);o.start(t);o.stop(t+.32);});}
-function goTo(i){fIdx=i;pos=0;const f=frames[i],p=frames[i-1];let m=f.change?f.name+'.':'Frame '+(i+1)+' of '+frames.length+', '+f.name+'.',dir=null;if(p&&p.st.n&&f.st.n){
+// Chrysanthos: while playing it only says the year and the change ("2014, up 2 percent."), so it's finished before the next
+// year starts and talks less over the music. Stepping with N / P still gets the full sentence.
+function goTo(i){fIdx=i;pos=0;const f=frames[i],p=frames[i-1];let m=f.change?f.name+'.':'Frame '+(i+1)+' of '+frames.length+', '+f.name+'.',sh=f.name+'.',dir=null;if(p&&p.st.n&&f.st.n){
 // Chrysanthos: for data that can't go negative the threshold is now 1% of the previous average, not 1% of the whole range.
 // Night lights grow ~2-6% a year, which used to always come out as "about the same" with a flat chime.
-const d=f.st.mean-p.st.mean,th=S.vmin>=0&&p.st.mean>0?p.st.mean*.01:(S.vmax-S.vmin)*.01;dir=d>th?'up':d<-th?'down':'same';m+=' Average '+(dir==='same'?'about the same':dir+' '+fmt(Math.abs(d))+u()+pct(d,p.st.mean))+'.';}if(playing&&dir)chime(dir);announce(m);draw();updStatus();}
+const d=f.st.mean-p.st.mean,th=S.vmin>=0&&p.st.mean>0?p.st.mean*.01:(S.vmax-S.vmin)*.01;dir=d>th?'up':d<-th?'down':'same';m+=' Average '+(dir==='same'?'about the same':chg(d,p.st.mean))+'.';
+const pc=S.vmin>=0&&p.st.mean>0?Math.abs(100*d/p.st.mean):null;sh=f.name+', '+(dir==='same'?'about the same':dir+' '+(pc!==null?(pc<10?pc.toFixed(1):Math.round(pc))+' percent':fmt(Math.abs(d))+u()))+'.';}
+if(playing&&dir)chime(dir);announce(playing?sh:m);draw();updStatus();}
 function tick(){const now=performance.now();pos+=(now-last)/1000/(+$('speed').value);last=now;
 if(pos>=1){if(fIdx<frames.length-1)goTo(fIdx+1);else if($('loop').checked)goTo(0);else{pause();pos=1;draw();announce(frames[fIdx].change?'End. Press D to hear where it changed the most.':'End of frames.');return;}}
 const f=frames[fIdx],col=Math.min(f.W-1,Math.floor(pos*f.W)),t=ac.currentTime;for(let b=0;b<12;b++){const k=b*f.W+col;voices[b].gain.setTargetAtTime(f.change?f.B[k]*.08:Math.pow(f.B[k],1.5)*.07,t,.04);downVoices[b].gain.setTargetAtTime(f.change?f.Bd[k]*.13:0,t,.04);}if(pan)pan.pan.setTargetAtTime(pos*2-1,t,.04);setMeter(f,col);draw();}
@@ -352,22 +359,24 @@ function prep(im,name,autoCrop){const k=S.crop,ac=autoCrop||{t:0,b:0,l:0,r:0},mi
 // Chrysanthos: same code as before, now a function so "Add your own maps" and the example in "Choose a map" share it. Afterwards it
 // opens the settings and brings the player back into view, so you hear and see the result straight away.
 // (stay = don't move the page or the focus, used when the example is picked in the menu). Your own images replace the example.
-async function addFiles(list,intro,stay){if($('preset').value==='example')uploaded=[];const fl=[...list].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));if(!fl.length)return;announce('Loading '+fl.length+' images.');const keep=new Set(uploaded.map(itemKey));const add=[];try{for(const f of fl){const id=fileKey(f);if(keep.has(id))continue;add.push({id,name:f.name,img:await loadImg(f)});keep.add(id);}}catch(err){announce('Could not read '+err.message+'. Please use PNG or JPEG images.');return;}if(!add.length){announce('Those images are already loaded.');$('files').value='';return;}
-uploaded=[...uploaded,...add].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));renderUploadList();sources=uploaded;mode='images';preset=null;const o=$('preset').querySelector('[value=upload]');o.disabled=false;$('preset').value='upload';$('intro').textContent=intro||'Your own images, '+uploaded.length+' frames.';fIdx=0;$('files').value='';rebuild();
+// "lead" = a sentence to say first (the example says what it is). "Loading..." is only said if it takes a while,
+// otherwise it was started and cut straight away by "Loaded".
+async function addFiles(list,intro,stay,lead){if($('preset').value==='example')uploaded=[];const fl=[...list].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));if(!fl.length)return;const slow=setTimeout(()=>announce('Loading '+fl.length+' images.'),800);const keep=new Set(uploaded.map(itemKey));const add=[];try{for(const f of fl){const id=fileKey(f);if(keep.has(id))continue;add.push({id,name:f.name,img:await loadImg(f)});keep.add(id);}}catch(err){clearTimeout(slow);announce('Could not read '+err.message+'. Please use PNG or JPEG images.');return;}clearTimeout(slow);if(!add.length){announce('Those images are already loaded.');$('files').value='';return;}
+uploaded=[...uploaded,...add].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));renderUploadList();sources=uploaded;mode='images';preset=null;const o=$('preset').querySelector('[value=upload]');o.disabled=false;$('preset').value='upload';$('intro').textContent=intro||'Your own images, '+uploaded.length+' frames.';fIdx=0;$('files').value='';rebuild(lead);
  $('mapSettings').open=true;if(!stay){$('player').scrollIntoView({block:'start'});$('play').focus({preventScroll:true});}}
 $('files').addEventListener('change',e=>addFiles(e.target.files));
 $('addMaps').onclick=()=>$('files').click();
 // Chrysanthos: the example in "Choose a map" adds two NASA images (data/examples.js, only loaded when needed) exactly like an upload, with the
 // range, units and map area filled in. It replaces whatever was uploaded before.
 let exampleJs=null,exampleBusy=false;
-async function loadExample(){if(exampleBusy)return;exampleBusy=true;announce('Loading the example.');
+async function loadExample(){if(exampleBusy)return;exampleBusy=true;
  try{exampleJs=exampleJs||new Promise((ok,no)=>{const sc=document.createElement('script'),v=$('appJs').getAttribute('src').split('?')[1];sc.src='data/examples.js'+(v?'?'+v:'');sc.onload=ok;sc.onerror=()=>{exampleJs=null;no(new Error('examples.js'));};document.head.appendChild(sc);});
   await exampleJs;const X=window.EJ_EXAMPLE;
   // its colorbar sits inside the map, where auto-detection doesn't look, so it comes with the example, same as uploading it by hand
   $('cbar').value='';makeCustomLutFromLine(X.bar);manualCustomLut=true;$('cmap').value='custom';$('vmin').value=X.vmin;$('vmax').value=X.vmax;$('units').value=X.units;$('lat0').value=X.lat[0];$('lat1').value=X.lat[1];$('lon0').value=X.lon[0];$('lon1').value=X.lon[1];
   ['cropT','cropB','cropL','cropR'].forEach(k=>{$(k).value=0;});uploaded=[];
   const files=X.frames.map(f=>{const b=atob(f.src.split(',')[1]),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return new File([a],f.name,{type:'image/jpeg',lastModified:0});});
-  await addFiles(files,X.intro,true);$('preset').value='example';}
+  await addFiles(files,X.intro,true,'Air pollution over New York: NASA satellite images of nitrogen dioxide in March, the 2015 to 2019 average and 2020, when the COVID-19 lockdowns began. Press C to hear only what changed.');$('preset').value='example';updStatus();}
  catch(_err){announce('The example could not be loaded.');}
  finally{exampleBusy=false;}}
 $('startListen').addEventListener('click',()=>{if(!playing)play();});
@@ -478,16 +487,17 @@ const exHelp=()=>'Explore mode. The arrow keys move around the map, '+exStep()+'
  (frames[fIdx]&&frames[fIdx].change?'a clean tone where it went up and a low buzz where it went down':'louder for a higher value')+'. A soft click means no data. Enter says the place and the value. N and P still change the frame. Press E or Escape to leave.';
 function setExplore(on,quiet){if(on===exploring)return;if(on&&!frames.length){announce('Add frames first.');return;}
  exploring=on;$('explore').setAttribute('aria-pressed',String(on));$('cv').classList.toggle('exploring',on);
- if(on){pause();[exLat,exLon]=exLat===null?exClamp((S.lat0+S.lat1)/2,(S.lon0+S.lon1)/2):exClamp(exLat,exLon);draw();if(!quiet)say(frameDescription(frames[fIdx],fIdx)||'No pre-written description is available for this uploaded map.');}
+ if(on){pause();[exLat,exLon]=exLat===null?exClamp((S.lat0+S.lat1)/2,(S.lon0+S.lon1)/2):exClamp(exLat,exLon);draw();if(!quiet)say(exHelp());}
  else{exDrag=false;clearTimeout(exTm);draw();if(!quiet)announce('Explore mode off. The arrow keys change the frame again.');}}
 function exText(){const f=frames[fIdx];if(!f)return'';const v=exAvg(f.vals,f.W,f.H,exLat,exLon),pl=placeAt(exLat,exLon),ns=Math.round(exLat),ew=Math.round(exLon);
  let t=(pl?pl+', ':'')+Math.abs(ns)+' degrees '+(ns>=0?'north':'south')+', '+Math.abs(ew)+' '+(ew>=0?'east':'west')+': ';
  if(v!==v)t+='no data here.';
  else if(f.change){const base=exAvg(f.from.vals,f.W,f.H,exLat,exLon);
-  if(Math.abs(v)<f.thr)t+='about the same from '+f.from.name+' to '+f.to.name+'.';
-  else{const p=S.vmin>=0&&base>0?Math.abs(100*v/base):NaN;t+='went '+(v>0?'up ':'down ')+(p===p?(p<10?p.toFixed(1):Math.round(p))+' percent':fmt(Math.abs(v))+u())+' from '+f.from.name+' to '+f.to.name+'.';}}
+  // "in 2023 compared with 2012": "from 2015 to 2019 average to 2020" was hard to follow with two "to"s
+  if(Math.abs(v)<f.thr)t+='about the same in '+f.to.name+' as in '+f.from.name+'.';
+  else{const p=S.vmin>=0&&base>0?Math.abs(100*v/base):NaN;t+='went '+(v>0?'up ':'down ')+(p===p?(p<10?p.toFixed(1):Math.round(p))+' percent':fmt(Math.abs(v))+u())+' in '+f.to.name+' compared with '+f.from.name+'.';}}
  else{const q=exLevel(f,v),w=S.units==='brightness'?['dark','dim','medium','bright','very bright']:['very low','low','medium','high','very high'];t+=fmt(v)+u()+', '+w[Math.min(4,Math.floor(q*5))]+'.';}
- return t;}
+ return t.charAt(0).toUpperCase()+t.slice(1);}
 function exSpeak(){const t=exText();if(t)say(t);}
 const exPoint=e=>{const r=$('cv').getBoundingClientRect();return[S.lat1-(e.clientY-r.top)/r.height*(S.lat1-S.lat0),S.lon0+(e.clientX-r.left)/r.width*(S.lon1-S.lon0)];};
 $('explore').onclick=()=>setExplore(!exploring);
@@ -509,7 +519,7 @@ function tourSpeak(t){return new Promise(ok=>{$('dtxt').textContent=t;const est=
  // one sentence per utterance: some Chrome voices stop after about 15 seconds of one long utterance and never say they're done.
  // (split on ". " and not on "." so numbers like 0.08 stay whole; no lookbehind regex, older iPhones don't have it)
  if($('speech').checked&&'speechSynthesis' in window){speechSynthesis.cancel();const parts=t.replace(/([.!?])\s+/g,'$1\n').split('\n');
-  parts.forEach((s,i)=>{const m=new SpeechSynthesisUtterance(s);m.lang='en';m.onerror=fin;if(i===parts.length-1)m.onend=fin;speechSynthesis.speak(m);});setTimeout(fin,est*1.3);}
+  parts.forEach((s,i)=>{const m=enUtter(s);m.onerror=fin;if(i===parts.length-1)m.onend=fin;speechSynthesis.speak(m);});setTimeout(fin,est*1.3);}
  else{$('live').textContent='';setTimeout(()=>{$('live').textContent=t;},60);setTimeout(fin,est);}});}
 function setTourBtn(on){const b=$('tour');b.textContent=on?'Stop the tour':'Take the 1-minute tour';b.dataset.on=on?'1':'';}
 function stopTour(){if(!tourRunning)return;tourRunning=false;tourId++;$('speed').value=tourSpeed;setTourBtn(false);if(exploring)setExplore(false,true);pause();}

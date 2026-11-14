@@ -13,6 +13,7 @@ Then, from the repo folder:
 
 - `node tests/fullcheck.js`: about 100 checks (keyboard, buttons, voice, uploads, Explore, the tour…), one PASS or FAIL line each.
 - `node tests/validate.js`: prints the numbers used in the Validation section of the main README.
+- `node tests/speechcheck.js`: listens to everything the app says in real use (playing, D, L, Explore, the example, the tour) and flags sentences cut off before they could be heard, repeats, a voice that isn't English and very long speeches. Takes about 3 minutes.
 - `node tests/pitchcheck.js`: goes through the demo in PITCH.md step by step.
 
 Run `fullcheck.js` before pushing a change to `index.html`, `css/` or `js/`.

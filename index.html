@@ -7,8 +7,8 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='11' fill='%23102a5c' stroke='%237cc4ff' stroke-width='2'/%3E%3Cpath d='M5 16h22M16 5c4 4 4 18 0 22M16 5c-4 4-4 18 0 22' fill='none' stroke='%237cc4ff' stroke-width='1.5'/%3E%3Ccircle cx='16' cy='16' r='14.5' fill='none' stroke='%23ffd166' stroke-width='1' stroke-dasharray='3 3'/%3E%3C/svg%3E">
 <!-- Chrysanthos: everything is local (no web fonts, no trackers), so it also works offline by double-clicking.
      The ?v= number makes browsers fetch the new file after a change (GitHub Pages lets them keep old copies for 10 minutes,
-     and new HTML with an old CSS/JS breaks the page). Change the number in all three places when you edit css, js or data. -->
-<link rel="stylesheet" href="css/style.css?v=20261114-11">
+     and new HTML with an old CSS/JS breaks the page). Change the number in every place when you edit css, js or data. -->
+<link rel="stylesheet" href="css/style.css?v=20261114-12">
 </head><body>
 <a class="skip" href="#player">Skip to the player</a>
 <div class="sky" aria-hidden="true"></div>
@@ -72,7 +72,7 @@
 <div id="timeline" class="timeline" role="group" aria-label="Jump to a frame"></div>
 
 <div class="transport" role="group" aria-label="Playback controls">
-<button id="play" class="btn-play" data-state="paused">Play</button><button id="prev" class="ico ico-prev">Previous frame</button><button id="next" class="ico ico-next">Next frame</button><button id="replay" class="ico ico-replay">Replay frame</button><button id="desc" class="ico ico-desc">Describe frame</button><button id="stopSpeech" type="button">Stop</button><button id="leg" class="ico ico-help">How to listen</button><!-- Chrysanthos: Explore mode on/off (same as the E key) --><button id="explore" type="button" class="ico ico-explore" aria-pressed="false">Explore the map</button></div>
+<button id="play" class="btn-play" data-state="paused">Play</button><button id="prev" class="ico ico-prev">Previous frame</button><button id="next" class="ico ico-next">Next frame</button><button id="replay" class="ico ico-replay">Replay frame</button><button id="desc" class="ico ico-desc">Describe frame</button><button id="stopSpeech" type="button">Stop the voice</button><button id="leg" class="ico ico-help">How to listen</button><!-- Chrysanthos: Explore mode on/off (same as the E key) --><button id="explore" type="button" class="ico ico-explore" aria-pressed="false">Explore the map</button></div>
 <div class="row settings">
 <label class="inline">Speed <select id="speed"><option value="14">Slow, 14 seconds per frame</option><option value="8" selected>Normal, 8 seconds per frame</option><option value="4">Fast, 4 seconds per frame</option></select></label>
 <label class="check inline"><input type="checkbox" id="loop"> Loop</label>
@@ -171,5 +171,6 @@
 <p class="m disclaimer">This is an independent project, not an official NASA product.</p>
 </footer>
 <!-- Chrysanthos: preset data, built by tools/build_nightlights.py. If it's missing the page falls back to the demo -->
-<script src="data/nightlights.js?v=20261114-11"></script>
-<script id="appJs" src="js/app.js?v=20261114-11"></script></body></html>
+<script src="data/nightlights.js?v=20261114-12"></script>
+<script src="data/descriptions.js?v=20261114-12"></script>
+<script id="appJs" src="js/app.js?v=20261114-12"></script></body></html>

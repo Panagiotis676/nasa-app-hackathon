@@ -10,7 +10,8 @@ const check = (name, ok, info = '') => results.push([ok ? 'PASS' : 'FAIL', name,
   const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
   await p.addInitScript(() => {
     window.__said = []; window.__cancels = 0; window.__talking = false;
-    Object.defineProperty(window, 'speechSynthesis', { value: { speak(u) { __said.push(u.text); __talking = true; if (u.onend) setTimeout(() => u.onend(), 30); }, cancel() { __cancels++; __talking = false; }, speaking: false, pending: false } });
+    Object.defineProperty(window, 'speechSynthesis', { value: { speak(u) { __said.push(u.text); __vlang.push(u.voice ? u.voice.lang : 'none'); __talking = true; if (u.onend) setTimeout(() => u.onend(), 30); }, cancel() { __cancels++; __talking = false; }, getVoices() { return [{ lang: 'el-GR', name: 'Melina' }, { lang: 'en-US', name: 'Samantha' }]; }, addEventListener() {}, speaking: false, pending: false } });
+    window.__vlang = [];
     window.SpeechSynthesisUtterance = class { constructor(t) { this.text = t; } };
     // Explore checks: remember every oscillator / panner / noise click the page makes, and vibrations
     window.__osc = []; window.__pan = []; window.__clicks = 0; window.__vib = [];
@@ -71,7 +72,7 @@ const check = (name, ok, info = '') => results.push([ok ? 'PASS' : 'FAIL', name,
   // D. voice rules
   await p.click('#desc'); await p.click('#play'); await p.waitForTimeout(150);
   check('Play cuts the voice and starts the sound', (await ev(() => playing)) && !(await ev(() => __talking)));
-  await ev(() => goTo(3)); check('Year is spoken while playing', (await ev(() => __said.at(-1))).startsWith('Frame 4 of 12, 2015'), await ev(() => __said.at(-1)));
+  await ev(() => goTo(3)); check('Year is spoken while playing', (await ev(() => __said.at(-1))).startsWith('2015, '), await ev(() => __said.at(-1)));
   await p.click('#desc'); check('Describe while playing pauses the sound', !(await ev(() => playing)) && (await ev(() => __talking)));
   await p.click('#play'); await p.click('#play'); check('Pause stops the voice', !(await ev(() => __talking)));
   check('Rising chime 2014 -> 2015 etc: year changes say up/down', (await ev(() => { goTo(8); return __said.at(-1); })).includes('down'), 'goTo 2020: ' + (await ev(() => __said.at(-1))));
@@ -189,7 +190,7 @@ const check = (name, ok, info = '') => results.push([ok ? 'PASS' : 'FAIL', name,
   await key('c'); await key('e'); await p.mouse.click(...at(23, 78)); await p.waitForTimeout(150);
   check('Change mode: India plays the clean "went up" tone', (await ev(() => __osc.at(-1).type)) === 'sine' && (await ev(() => frames[0].change)));
   await key('Enter'); const ce = await ev(() => __said.at(-1));
-  check('Change mode: Enter says "went up N percent"', /^India, .*: went up [\d.]+ percent from 2012 to 2023\.$/.test(ce), ce);
+  check('Change mode: Enter says "went up N percent"', /^India, .*: went up [\d.]+ percent in 2023 compared with 2012\.$/.test(ce), ce);
   const dn = await ev(() => { const f = frames[0]; let best = [0, 0, 0]; for (let la = -60; la <= 70; la += 2) for (let lo = -180; lo <= 180; lo += 2) { const v = exAvg(f.vals, f.W, f.H, la, lo); if (v < best[0]) best = [v, la, lo]; } exGo(best[1], best[2]); return __osc.at(-1).type; });
   check('Change mode: a place that dimmed plays the low buzz', dn === 'sawtooth', dn);
   await key('Space'); check('Play leaves Explore', !(await ev(() => exploring)) && (await ev(() => playing))); await key('Space');
@@ -226,6 +227,12 @@ const check = (name, ok, info = '') => results.push([ok ? 'PASS' : 'FAIL', name,
   // N. page
   check('Skip link goes to the player', (await p.getAttribute('.skip', 'href')) === '#player');
   check('No light theme left', (await p.$('#themeBtn')) === null);
+  check('Only English is spoken (no Greek anywhere)', !(await ev(() => __said.some(x => /[\u0370-\u03ff]/.test(x)))), await ev(() => __said.filter(x => /[\u0370-\u03ff]/.test(x)).slice(0, 2).join(' / ')));
+  check('Every utterance uses the English voice, even with a Greek one installed', (await ev(() => __vlang.length)) > 20 && (await ev(() => __vlang.every(l => l === 'en-US'))), (await ev(() => __vlang.length)) + ' utterances, other voices: ' + (await ev(() => __vlang.filter(l => l !== 'en-US').join(','))));
+  const sc0 = await ev(() => __cancels); await p.click('#stopSpeech');
+  check('"Stop the voice" button stops the voice', (await ev(() => __cancels)) > sc0);
+  const alt = await ev(() => { const keep = descriptions; descriptions = { nightlights: ['Test picture text.'] }; goTo(0); const a = document.getElementById('cv').getAttribute('aria-label'); descriptions = keep; goTo(0); return a; });
+  check('Written description (data/descriptions.json) is the map image description', alt === 'Test picture text.', alt);
   check('No errors in the console', errs.length === 0, errs.join(' | '));
 
   // fallback: if the NASA data file can't be loaded the page still works, with a clear note
