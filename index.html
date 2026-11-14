@@ -8,7 +8,7 @@
 <!-- Chrysanthos: everything is local (no web fonts, no trackers), so it also works offline by double-clicking.
      The ?v= number makes browsers fetch the new file after a change (GitHub Pages lets them keep old copies for 10 minutes,
      and new HTML with an old CSS/JS breaks the page). Change the number in all three places when you edit css, js or data. -->
-<link rel="stylesheet" href="css/style.css?v=20261114-3">
+<link rel="stylesheet" href="css/style.css?v=20261114-5">
 </head><body>
 <a class="skip" href="#player">Skip to the player</a>
 <div class="sky" aria-hidden="true"></div>
@@ -19,7 +19,6 @@
 <svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="12" class="logo-globe"/><path d="M8 20h24M20 8c5 5 5 19 0 24M20 8c-5 5-5 19 0 24" class="logo-lines"/><path d="M3 20a17 17 0 0 1 4-11M37 20a17 17 0 0 0-4-11M3 20a17 17 0 0 0 4 11M37 20a17 17 0 0 1-4 11" class="logo-waves"/></svg>
 <span>Earth Jukebox</span></a>
 <nav aria-label="Sections"><a href="#player">Player</a><a href="#how">How it works</a><a href="#data">Your maps</a><a href="#keys">Shortcuts</a></nav>
-<button id="themeBtn" class="theme-btn" aria-pressed="false">Light theme</button>
 </div>
 </header>
 
@@ -68,7 +67,9 @@
 <div class="row settings">
 <label class="inline">Speed <select id="speed"><option value="14">Slow, 14 seconds per frame</option><option value="8" selected>Normal, 8 seconds per frame</option><option value="4">Fast, 4 seconds per frame</option></select></label>
 <label class="check inline"><input type="checkbox" id="loop"> Loop</label>
-<label class="inline">Volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.6"></label></div>
+<label class="inline">Volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.6"></label>
+<!-- Chrysanthos: saves what Play would play as a WAV file (music and chimes, not the voice) -->
+<button id="dl" type="button" class="ico ico-dl">Download sound</button></div>
 
 <div class="readout">
 <h3>Description of the current frame</h3>
@@ -151,5 +152,5 @@
 <p class="m disclaimer">This is an independent project, not an official NASA product.</p>
 </footer>
 <!-- Chrysanthos: preset data, built by tools/build_nightlights.py. If it's missing the page falls back to the demo -->
-<script src="data/nightlights.js?v=20261114-3"></script>
-<script src="js/app.js?v=20261114-3"></script></body></html>
+<script src="data/nightlights.js?v=20261114-5"></script>
+<script src="js/app.js?v=20261114-5"></script></body></html>
