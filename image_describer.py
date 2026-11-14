@@ -94,13 +94,29 @@ def lut_from_cmap(name: str, vmin: float, vmax: float):
 def lut_from_colorbar(bar_bgr: np.ndarray, vmin: float, vmax: float):
     """Colors and values from a cropped image of the map's colorbar.
 
-    Wide crop = horizontal bar (left = vmin). Tall crop = vertical bar (bottom = vmin).
+    Ignore pointed caps, outlines and nearby text by sampling only the middle
+    band of the gradient. Wide crop = horizontal bar (left = vmin). Tall crop =
+    vertical bar (bottom = vmin).
     """
     bar = bar_bgr.astype(np.float32)
-    colors = bar.mean(axis=0) if bar.shape[1] >= bar.shape[0] else bar.mean(axis=1)[::-1]
-    if len(colors) > 256:  # subsample for speed
+    if bar.shape[1] >= bar.shape[0]:
+        h, w = bar.shape[:2]
+        pad_x = max(2, int(w * 0.03))
+        start = pad_x
+        end = max(start + 1, w - pad_x)
+        strip = bar[:, start:end]
+        colors = strip.mean(axis=0)
+    else:
+        h, w = bar.shape[:2]
+        pad_y = max(2, int(h * 0.03))
+        start = pad_y
+        end = max(start + 1, h - pad_y)
+        strip = bar[start:end, :]
+        colors = strip.mean(axis=1)[::-1]
+
+    if len(colors) > 256:
         colors = colors[np.linspace(0, len(colors) - 1, 256).astype(int)]
-    return colors, np.linspace(vmin, vmax, len(colors)).astype(np.float32)
+    return colors.astype(np.float32), np.linspace(vmin, vmax, len(colors)).astype(np.float32)
 
 
 def decode_values(img: np.ndarray, lut=None, max_side: int = 256, tol: float = 40.0) -> np.ndarray:

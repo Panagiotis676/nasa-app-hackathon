@@ -17,7 +17,7 @@ function pauseSonifyOnly(){playing=false;clearInterval(timer);if(ac)voices.conca
 function lutFor(n){if(n==='gray')return null;if(n==='custom')return customLut;const s=HEX[n].map(h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16))),L=[];for(let i=0;i<256;i++){const p=i/255*(s.length-1),k=Math.min(Math.floor(p),s.length-2),f=p-k;L.push([0,1,2].map(c=>s[k][c]+(s[k+1][c]-s[k][c])*f));}return L;}
 // Chrysanthos: brightness mode now uses the min/max boxes too. It was stuck on 0..1, and dim maps like night lights came out almost silent.
 // Also reads the trim boxes (crop).
-function readS(){const c=$('cmap').value,g=c==='gray',tr=id=>Math.max(0,Math.min(90,+$(id).value||0));return{gray:g,lut:lutFor(c),vmin:+$('vmin').value,vmax:+$('vmax').value,units:$('units').value.trim()||(g?'brightness':''),tol:+$('tol').value||50,lat0:+$('lat0').value,lat1:+$('lat1').value,lon0:+$('lon0').value,lon1:+$('lon1').value,autoColorbar:$('autoColorbar').checked,crop:{t:tr('cropT'),b:tr('cropB'),l:tr('cropL'),r:tr('cropR')}};}
+function readS(){const c=$('cmap').value,g=c==='gray',tr=id=>Math.max(0,Math.min(90,+$(id).value||0));return{gray:g,lut:lutFor(c),vmin:+$('vmin').value,vmax:+$('vmax').value,units:$('units').value.trim()||(g?'brightness':''),tol:+$('tol').value||50,lat0:+$('lat0').value,lat1:+$('lat1').value,lon0:+$('lon0').value,lon1:+$('lon1').value,autoColorbar:$('autoColorbar').checked,crop:{t:tr('cropT'),b:tr('cropB'),l:tr('cropL'),r:tr('cropR')},hide:{l:+$('hideL').value||0,t:+$('hideT').value||0,w:+$('hideW').value||0,h:+$('hideH').value||0}};}
 const u=()=>S.units?' '+S.units:'';
 // Chrysanthos: decimals depend on the value range. With a fixed 2 decimals the night lights (avg ~0.004) all read as "0.00"
 const fmt=n=>n.toFixed(Math.max(0,Math.min(6,2-Math.floor(Math.log10(Math.abs(S.vmax-S.vmin)||1)))));
@@ -197,10 +197,7 @@ const d=f.st.mean-p.st.mean,th=S.vmin>=0&&p.st.mean>0?p.st.mean*.01:(S.vmax-S.vm
 function tick(){const now=performance.now();pos+=(now-last)/1000/(+$('speed').value);last=now;
 if(pos>=1){if(fIdx<frames.length-1)goTo(fIdx+1);else if($('loop').checked)goTo(0);else{pause();pos=1;draw();announce(frames[fIdx].change?'End. Press D to hear where it changed the most.':'End of frames.');return;}}
 const f=frames[fIdx],col=Math.min(f.W-1,Math.floor(pos*f.W)),t=ac.currentTime;for(let b=0;b<12;b++){const k=b*f.W+col;voices[b].gain.setTargetAtTime(f.change?f.B[k]*.08:Math.pow(f.B[k],1.5)*.07,t,.04);downVoices[b].gain.setTargetAtTime(f.change?f.Bd[k]*.13:0,t,.04);}if(pan)pan.pan.setTargetAtTime(pos*2-1,t,.04);setMeter(f,col);draw();}
-// Chrysanthos (merging with Panagiotis's version): Play stops whatever the voice is saying and starts the sound
-// straight away, so you never press Play and get nothing
 async function play(){if(!frames.length){announce('Add frames first.');return;}if(exploring)setExplore(false,true);if('speechSynthesis' in window)speechSynthesis.cancel();initAudio();try{await ac.resume();}catch(_err){return;}if(pos>=1)pos=0;playing=true;last=performance.now();clearInterval(timer);timer=setInterval(tick,30);setPlayBtn(true);}
-// Chrysanthos: Pause now stops the voice too, not only the music. Before, it kept talking until the sentence was finished.
 function pause(){playing=false;clearInterval(timer);if(ac)voices.concat(downVoices).forEach(g=>g.gain.setTargetAtTime(0,ac.currentTime,.05));if('speechSynthesis' in window)speechSynthesis.cancel();$('live').textContent='';setPlayBtn(false);}
 const toggle=()=>playing?pause():play();
 function step(d){if(frames[0]&&frames[0].change){announce('In this mode there is one sweep, from the first to the last frame. Press C to hear every frame.');return;}const i=fIdx+d;if(i<0||i>=frames.length){announce(d>0?'This is the last frame.':'This is the first frame.');return;}goTo(i);}
@@ -211,140 +208,12 @@ const describeNow=()=>{if(frames.length)say(describe(frames[fIdx],fIdx));};
 function rebuild(lead){pause();S=readS();const pre=typeof lead==='string'?lead+' ':'';if(!(S.vmax>S.vmin)){announce('The maximum value must be larger than the minimum.');return;}
 if(S.crop.t+S.crop.b>=95||S.crop.l+S.crop.r>=95){announce('The trims leave almost nothing of the map. Make them smaller.');return;}
 autoBarState=null;
-if(mode==='images'&&sources.length&&S.autoColorbar&&!manualCustomLut){
-  const found=detectAutoColorbarFromSources(sources);
-  if(found){
-    autoBarState={crop:autoCropFromDetection(found),edge:found.edge};
-    makeCustomLutFromLine(found.line);
-    S.lut=customLut;
-    setDetectBadge('auto','detected automatically on the '+found.edge+' edge.');
-    setAutoStatus('Auto-detected an embedded colorbar on the '+found.edge+' edge (frame '+(found.frame+1)+', confidence '+found.score.toFixed(1)+') and using it as LUT.');
-  }else{setDetectBadge('off','no embedded colorbar detected; using selected colormap.');setAutoStatus('No embedded colorbar detected. Using the selected colormap.');}
-}else if(mode==='images'&&manualCustomLut){
-  setDetectBadge('manual','using uploaded colorbar image.');
-  setAutoStatus('Using uploaded colorbar image.');
-}else if(mode==='images'&&!S.autoColorbar){
-  setDetectBadge('off','auto-detection is off; using selected colormap.');
-  setAutoStatus('Auto colorbar detection is off.');
-}else{setDetectBadge('off','waiting for images.');setAutoStatus('Auto colorbar detection is idle.');}
-
-frames=mode==='demo'?demoFrames():sources.map(x=>{const p=prep(x.img,x.name,autoBarState?autoBarState.crop:null);return mkFrame(p.name,p.raw.width,p.raw.height,decode(p.raw),p.disp);});
-// Chrysanthos: in "hear the change" mode the frame list becomes a single frame, last minus first
-let note='';if(view==='change'&&frames.length){const a=frames[0],b=frames[frames.length-1],why=frames.length<2?'needs at least two frames':a.W!==b.W||a.H!==b.H?'needs the first and last frame to be the same size':'';
- if(why){view='frames';$('view').value='frames';note='Hearing only the change '+why+', so every frame will play instead. ';}else frames=[mkChange(a,b)];}
+if(mode==='images'&&sources.length&&S.autoColorbar&&!manualCustomLut){const found=detectAutoColorbarFromSources(sources);if(found){const rect=rectFromNorm(found.rect);autoBarState={crop:autoCropFromDetection(found),edge:found.edge,rect};makeCustomLutFromLine(found.line);S.lut=customLut;setDetectBadge('auto','detected automatically at the '+found.edge+' and hidden from the map.');setAutoStatus('Colorbar found at the '+found.edge+' in frame '+(found.frame+1)+' and hidden from the map.');announce('Colorbar found at the '+found.edge+' in frame '+(found.frame+1)+' and hidden from the map.');}else{setDetectBadge('off','no embedded colorbar detected; using selected colormap.');setAutoStatus('No embedded colorbar detected. Using the selected colormap.');}}else if(mode==='images'&&manualCustomLut){setDetectBadge('manual','using uploaded colorbar image.');setAutoStatus('Using uploaded colorbar image.');}else if(mode==='images'&&!S.autoColorbar){setDetectBadge('off','auto-detection is off; using selected colormap.');setAutoStatus('Auto colorbar detection is off.');}else{setDetectBadge('off','waiting for images.');setAutoStatus('Auto colorbar detection is idle.');}
+frames=mode==='demo'?demoFrames():sources.map(x=>{const maskRect = autoBarState&&autoBarState.rect ? autoBarState.rect : (S.hide.l||S.hide.t||S.hide.w||S.hide.h ? {x:S.hide.l/100,y:S.hide.t/100,w:S.hide.w/100,h:S.hide.h/100} : null);const p=prep(x.img,x.name,autoBarState?autoBarState.crop:null,maskRect);return mkFrame(p.name,p.raw.width,p.raw.height,decode(p.raw),p.disp);});
+let note='';if(view==='change'&&frames.length){const a=frames[0],b=frames[frames.length-1],why=frames.length<2?'needs at least two frames':a.W!==b.W||a.H!==b.H?'needs the first and last frame to be the same size':'';if(why){view='frames';$('view').value='frames';note='Hearing only the change '+why+', so every frame will play instead. ';}else frames=[mkChange(a,b)];}
 fIdx=Math.min(fIdx,Math.max(0,frames.length-1));pos=0;draw();updStatus();if(!frames.length){announce('Add images to begin.');return;}
-const cov=frames.reduce((a,f)=>a+f.st.n/(f.W*f.H),0)/frames.length,f0=frames[0];
-announce(pre+note+(cov<.05?'Loaded '+frames.length+' frames, but very few pixels matched the colormap. Check the colormap, range and tolerance.':f0.change?'Ready to hear what changed from '+f0.from.name+' to '+f0.to.name+'. '+changeHow()+' Press Play to listen.':'Loaded '+frames.length+' frames. Press Play to listen.'));}
-function setView(v){view=v;$('view').value=v;fIdx=0;rebuild();}
-function setDemo(){$('cmap').value='diverging';$('vmin').value=-3;$('vmax').value=3;$('units').value='°C anomaly';mode='demo';preset=null;$('intro').textContent='Made-up data, not from NASA: six months of a pretend ocean temperature anomaly, with a warm patch in the Pacific that grows and then fades.';}
-const loadImg=f=>new Promise((ok,no)=>{const url=URL.createObjectURL(f),i=new Image();i.onload=()=>{URL.revokeObjectURL(url);ok(i);};i.onerror=()=>no(new Error(f.name));i.src=url;});
-const loadURL=(url,name)=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>no(new Error(name));i.src=url;});
-const fileKey=f=>`${f.name}::${f.size}::${f.lastModified}`;
-const itemKey=x=>x.id||x.name;
-const setAutoStatus=t=>{$('autoColorbarStatus').textContent=t;};
-const setDetectBadge=(kind,text)=>{const el=$('cmapDetect');if(!el)return;el.className='detect-badge '+kind;el.textContent='Colorbar status: '+text;};
-function renderUploadList(){const ul=$('uploadList');ul.textContent='';if(!uploaded.length){const li=document.createElement('li');li.className='empty';li.textContent='No uploaded frames yet.';ul.appendChild(li);}else uploaded.forEach((it,i)=>{const li=document.createElement('li'),nm=document.createElement('span'),btn=document.createElement('button');nm.className='name';nm.textContent=(i+1)+'. '+it.name;btn.type='button';btn.className='subtle';btn.dataset.remove=itemKey(it);btn.textContent='Remove';li.appendChild(nm);li.appendChild(btn);ul.appendChild(li);});$('clearUploads').disabled=!uploaded.length;$('uploadHint').textContent=uploaded.length?`${uploaded.length} frame${uploaded.length===1?'':'s'} loaded.`:'Add files in batches. New selections are appended and sorted by name.';}
-
-function makeCustomLutFromLine(line){const len=line.length||1;customLut=[];for(let k=0;k<256;k++)customLut.push(line[Math.round(k*(len-1)/255)]);$('cmap').querySelector('[value=custom]').disabled=false;}
-
-function detectEmbeddedColorbar(im){
-  const c=document.createElement('canvas'),s=Math.min(1,640/Math.max(im.width,im.height));
-  c.width=Math.max(1,Math.round(im.width*s));c.height=Math.max(1,Math.round(im.height*s));
-  const x=c.getContext('2d');x.drawImage(im,0,0,c.width,c.height);
-  const raw=x.getImageData(0,0,c.width,c.height).data,W=c.width,H=c.height;
-  const px=(xx,yy)=>{const o=4*(yy*W+xx);return[raw[o],raw[o+1],raw[o+2],raw[o+3]];};
-  const candidates=[],bands=[0.06,0.1,0.14],insets=[0,0.03];
-  bands.forEach(fr=>{const bh=Math.max(6,Math.round(H*fr)),bw=Math.max(6,Math.round(W*fr));
-    insets.forEach(ins=>{const ix=Math.round(W*ins),iy=Math.round(H*ins);
-	  candidates.push({edge:'top',x:0,y:iy,w:W,h:bh});
-	  candidates.push({edge:'bottom',x:0,y:Math.max(0,H-bh-iy),w:W,h:bh});
-	  candidates.push({edge:'left',x:ix,y:0,w:bw,h:H});
-	  candidates.push({edge:'right',x:Math.max(0,W-bw-ix),y:0,w:bw,h:H});
-    });
-  });
-
-  let best=null;
-  for(const r of candidates){
-	const wide=r.w>=r.h,len=wide?r.w:r.h,th=wide?r.h:r.w;if(len<24||th<4)continue;
-	const line=[];let acrossErr=0,used=0;
-	for(let i=0;i<len;i++){
-	  let rr=0,gg=0,bb=0,aa=0,samp=0;
-	  for(let j=0;j<th;j++){
-		const xx=wide?(r.x+i):(r.x+j),yy=wide?(r.y+j):(r.y+i),p=px(xx,yy);
-		if(p[3]<40)continue;
-		rr+=p[0];gg+=p[1];bb+=p[2];aa+=p[3];samp++;
-	  }
-	  if(!samp){line.push([0,0,0]);continue;}
-	  const ar=rr/samp,ag=gg/samp,ab=bb/samp,aaMean=aa/samp;
-	  line.push([ar,ag,ab]);used++;
-	  let e=0;
-	  for(let j=0;j<th;j++){
-		const xx=wide?(r.x+i):(r.x+j),yy=wide?(r.y+j):(r.y+i),p=px(xx,yy);
-		if(p[3]<40)continue;
-		e+=Math.sqrt((p[0]-ar)**2+(p[1]-ag)**2+(p[2]-ab)**2)+Math.abs(p[3]-aaMean)*0.1;
-	  }
-	  acrossErr+=e/Math.max(1,samp);
-	}
-	if(used<len*0.8)continue;
-	if(!wide)line.reverse();
-	let grad=0,sat=0;
-	for(let i=1;i<line.length;i++){const a=line[i-1],b=line[i];grad+=Math.sqrt((a[0]-b[0])**2+(a[1]-b[1])**2+(a[2]-b[2])**2);}
-	for(let i=0;i<line.length;i++){const mx=Math.max(...line[i]),mn=Math.min(...line[i]);sat+=mx-mn;}
-	grad/=Math.max(1,line.length-1);sat/=Math.max(1,line.length);
-	const flatPenalty=acrossErr/Math.max(1,len); // true colorbars are smoother across thickness than along length
-	const score=grad+sat*0.35-flatPenalty*0.25;
-	if(score>12&&(!best||score>best.score))best={score,line,edge:r.edge,rect:r,W,H};
-  }
-  return best;
+const cov=frames.reduce((a,f)=>a+f.st.n/(f.W*f.H),0)/frames.length,f0=frames[0];announce(pre+note+(cov<.05?'Loaded '+frames.length+' frames, but very few pixels matched the colormap. Check the colormap, range and tolerance.':f0.change?'Ready to hear what changed from '+f0.from.name+' to '+f0.to.name+'. '+changeHow()+' Press Play to listen.':'Loaded '+frames.length+' frames. Press Play to listen.'));
 }
-function detectAutoColorbarFromSources(list){
-  const maxChecks=Math.min(3,list.length);
-  let best=null;
-  for(let i=0;i<maxChecks;i++){
-    const found=detectEmbeddedColorbar(list[i].img);
-    if(found&&(!best||found.score>best.score))best={...found,frame:i};
-  }
-  return best;
-}
-function autoCropFromDetection(d){const pct=(v,tot)=>Math.max(0,Math.min(90,(v/tot)*100));const pad=1.2;if(!d)return{t:0,b:0,l:0,r:0};if(d.edge==='top')return{t:Math.min(90,pct(d.rect.h,d.H)+pad),b:0,l:0,r:0};if(d.edge==='bottom')return{t:0,b:Math.min(90,pct(d.rect.h,d.H)+pad),l:0,r:0};if(d.edge==='left')return{t:0,b:0,l:Math.min(90,pct(d.rect.w,d.W)+pad),r:0};return{t:0,b:0,l:0,r:Math.min(90,pct(d.rect.w,d.W)+pad)};}
-// Chrysanthos: prep now cuts out the map area first (trim boxes), then makes the small analysis copy and the display copy like before
-// Chrysanthos: for brightness maps (night lights) the small copy used for the numbers is now an exact average of all
-// the pixels each cell covers. The browser's own shrinking skips pixels, so single bright spots decided the
-// "highest value" (2012 came out as Korea or Texas, it's really Cairo) and some years even read as a drop that
-// isn't in the data (2015). Colormap maps still use the browser, there averaging would mix colours into ones
-// that aren't on the colorbar.
-function areaDown(im,sx,sy,sw,sh,m){
- const s=Math.min(1,m/Math.max(sw,sh)),W=Math.max(1,Math.round(sw*s)),H=Math.max(1,Math.round(sh*s));
- const k=Math.min(1,8*Math.max(W,H)/Math.max(sw,sh)),iw=Math.max(W,Math.round(sw*k)),ih=Math.max(H,Math.round(sh*k)); // at most 8x8 source pixels per cell
- const c=document.createElement('canvas');c.width=iw;c.height=ih;const x=c.getContext('2d');x.drawImage(im,sx,sy,sw,sh,0,0,iw,ih);
- const src=x.getImageData(0,0,iw,ih).data,out=new Uint8ClampedArray(W*H*4);
- for(let j=0;j<H;j++){const y0=Math.floor(j*ih/H),y1=Math.max(y0+1,Math.floor((j+1)*ih/H));
-  for(let i=0;i<W;i++){const x0=Math.floor(i*iw/W),x1=Math.max(x0+1,Math.floor((i+1)*iw/W));let r=0,g=0,b=0,a=0,n=0;
-   for(let yy=y0;yy<y1;yy++)for(let xx=x0;xx<x1;xx++){const o=4*(yy*iw+xx);r+=src[o];g+=src[o+1];b+=src[o+2];a+=src[o+3];n++;}
-   const o=4*(j*W+i);out[o]=r/n;out[o+1]=g/n;out[o+2]=b/n;out[o+3]=a/n;}}
- return{data:out,width:W,height:H};}
-function prep(im,name,autoCrop){const k=S.crop,ac=autoCrop||{t:0,b:0,l:0,r:0},mix={t:Math.min(90,k.t+ac.t),b:Math.min(90,k.b+ac.b),l:Math.min(90,k.l+ac.l),r:Math.min(90,k.r+ac.r)},sx=im.width*mix.l/100,sy=im.height*mix.t/100,sw=Math.max(1,im.width*(1-(mix.l+mix.r)/100)),sh=Math.max(1,im.height*(1-(mix.t+mix.b)/100)),mk=m=>{const s=Math.min(1,m/Math.max(sw,sh)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(sw*s));c.height=Math.max(1,Math.round(sh*s));c.getContext('2d').drawImage(im,sx,sy,sw,sh,0,0,c.width,c.height);return c;},d=mk(720);let raw;if(S.gray)raw=areaDown(im,sx,sy,sw,sh,160);else{const a=mk(160);raw=a.getContext('2d').getImageData(0,0,a.width,a.height);}return{name:name.replace(/\.[^.]+$/,'').replace(/[_-]+/g,' '),raw,disp:d};}
-$('files').addEventListener('change',async e=>{const fl=[...e.target.files].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));if(!fl.length)return;announce('Loading '+fl.length+' images.');const keep=new Set(uploaded.map(itemKey));const add=[];try{for(const f of fl){const id=fileKey(f);if(keep.has(id))continue;add.push({id,name:f.name,img:await loadImg(f)});keep.add(id);}}catch(err){announce('Could not read '+err.message+'. Please use PNG or JPEG images.');return;}if(!add.length){announce('Those images are already loaded.');e.target.value='';return;}
-uploaded=[...uploaded,...add].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));renderUploadList();sources=uploaded;mode='images';preset=null;const o=$('preset').querySelector('[value=upload]');o.disabled=false;$('preset').value='upload';$('intro').textContent='Your own images, '+uploaded.length+' frames.';fIdx=0;e.target.value='';rebuild();});
-
-$('uploadList').addEventListener('click',e=>{const id=e.target&&e.target.dataset?e.target.dataset.remove:null;if(!id)return;uploaded=uploaded.filter(x=>itemKey(x)!==id);renderUploadList();if(!uploaded.length){sources=[];mode='images';pause();frames=[];draw();updStatus();announce('All uploaded frames were removed.');return;}if($('preset').value==='upload'){sources=uploaded;fIdx=0;rebuild();}});
-$('clearUploads').addEventListener('click',()=>{if(!uploaded.length)return;uploaded=[];sources=[];renderUploadList();if($('preset').value==='upload'){pause();frames=[];draw();updStatus();announce('All uploaded frames were removed. Add images to begin.');}});
-
-// Chrysanthos: load a ready-made map. Sets the colormap, range, units and extent for you, then plays like uploaded images.
-async function usePreset(id){pause();
-if(id==='demo'){setDemo();fIdx=0;rebuild('Demo with made-up data.');return;}
-if(id==='upload'){if(!uploaded.length)return;preset=null;sources=uploaded;mode='images';$('intro').textContent='Your own images, '+uploaded.length+' frames.';fIdx=0;rebuild();return;}
-const P=(window.EJ_PRESETS||{})[id];if(!P){announce('This map is missing, the file data/'+id+'.js was not found.');return;}
-$('status').textContent='Loading '+P.title+'…';
-let imgs;try{imgs=await Promise.all(P.frames.map(f=>loadURL(f.src,f.name)));}catch(err){announce('Could not load '+P.title+'.');return;}
-$('cmap').value=P.cmap;$('vmin').value=P.vmin;$('vmax').value=P.vmax;$('units').value=P.units||'';
-$('lat0').value=P.lat[0];$('lat1').value=P.lat[1];$('lon0').value=P.lon[0];$('lon1').value=P.lon[1];
-['cropT','cropB','cropL','cropR'].forEach(k=>{$(k).value=0;});
-preset=P;sources=P.frames.map((f,i)=>({name:f.name,img:imgs[i]}));mode='images';
-$('intro').textContent=P.intro+' Source: '+P.source+'.';fIdx=0;rebuild(P.intro);}
-$('preset').addEventListener('change',()=>usePreset($('preset').value));
-$('view').addEventListener('change',()=>setView($('view').value));
-
 // Chrysanthos: same idea as lut_from_colorbar() in image_describer.py. Average across the bar's thickness, then take 256 colours along it.
 $('cbar').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;let im;try{im=await loadImg(f);}catch(err){announce('Could not read '+err.message+'.');return;}
 const c=document.createElement('canvas'),s=Math.min(1,1024/Math.max(im.width,im.height));c.width=Math.max(1,Math.round(im.width*s));c.height=Math.max(1,Math.round(im.height*s));
@@ -355,7 +224,7 @@ manualCustomLut=true;makeCustomLutFromLine(line);$('cmap').value='custom';setDet
 
 // Chrysanthos: picking "brightness only" by hand resets the range to 0..1 (presets set their own). Has to be added before the rebuild listener below.
 $('cmap').addEventListener('change',()=>{if($('cmap').value==='gray'){$('vmin').value=0;$('vmax').value=1;}if($('cmap').value!=='custom')manualCustomLut=false;});
-['cmap','vmin','vmax','units','tol','lat0','lat1','lon0','lon1','cropT','cropB','cropL','cropR','autoColorbar'].forEach(id=>$(id).addEventListener('change',rebuild));
+['cmap','vmin','vmax','units','tol','lat0','lat1','lon0','lon1','cropT','cropB','cropL','cropR','autoColorbar','hideL','hideT','hideW','hideH'].forEach(id=>$(id).addEventListener('change',rebuild));
 $('play').onclick=toggle;$('prev').onclick=()=>step(-1);$('next').onclick=()=>step(1);$('replay').onclick=replay;$('desc').onclick=describeNow;$('leg').onclick=()=>say(legendText());
 // ---------------------------------------------------------------------------------------------
 // Chrysanthos: "Download sound" renders exactly what Play would play (every frame, or the change sweep) into a WAV
@@ -403,7 +272,7 @@ function exClamp(la,lo){const a=latR(),o=lonR();return[Math.max(a[0],Math.min(a[
 // average of a small patch (about 1/72 of the map wide) around the point, NaN if none of it has data
 function exAvg(vals,W,H,la,lo){const x=Math.round((lo-S.lon0)/(S.lon1-S.lon0)*W-.5),y=Math.round((S.lat1-la)/(S.lat1-S.lat0)*H-.5),rx=Math.max(1,Math.round(W/72)),ry=Math.max(1,Math.round(H/36));let s=0,n=0;
  for(let j=Math.max(0,y-ry);j<=Math.min(H-1,y+ry);j++)for(let i=Math.max(0,x-rx);i<=Math.min(W-1,x+rx);i++){const v=vals[j*W+i];if(v===v){s+=v;n++;}}return n?s/n:NaN;}
-// 0..1 loudness for a value, same idea as the sweep: the colour scale in normal mode, size of the change in change mode
+ // 0..1 loudness for a value, same idea as the sweep: the colour scale in normal mode, size of the change in change mode
 function exLevel(f,v){if(v!==v)return 0;if(f.change)return Math.abs(v)<f.thr?0:Math.pow(cl(Math.abs(v)/f.big),.7);return cl((v-S.vmin)/(S.vmax-S.vmin));}
 function drawCursor(x,c){const px=(exLon-S.lon0)/(S.lon1-S.lon0)*c.width,py=(S.lat1-exLat)/(S.lat1-S.lat0)*c.height,lw=Math.max(1.5,c.width/360),r=Math.max(8,c.width/45);
  // dark outline first so the yellow cross shows on bright and dark maps alike
@@ -455,18 +324,4 @@ document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return
 // Chrysanthos: in Explore the arrows move the cursor instead of changing the frame, Enter speaks the spot. Enter on another button still presses it.
 if(k==='e'){e.preventDefault();setExplore(!exploring);return;}
 if(exploring){const mv={arrowup:[1,0],arrowdown:[-1,0],arrowleft:[0,-1],arrowright:[0,1]}[k];
- if(mv){e.preventDefault();exMove(mv[0],mv[1],e.shiftKey?30:10);return;}
- if(k==='escape'){e.preventDefault();setExplore(false);return;}
- if(k==='enter'&&!((t==='BUTTON'&&e.target.id!=='explore')||t==='A'||t==='SUMMARY')){e.preventDefault();exSpeak();return;}}
-if(k===' '){if(t==='BUTTON'||t==='SUMMARY'||t==='A')return;e.preventDefault();toggle();}
-else if(k==='arrowright'||k==='n'){e.preventDefault();step(1);}else if(k==='arrowleft'||k==='p'){e.preventDefault();step(-1);}
-else if(k==='r')replay();else if(k==='d')describeNow();else if(k==='l')say(legendText());else if(k==='c')setView(view==='change'?'frames':'change');
-else if(k==='+'||k==='='){e.preventDefault();changeSpeed(1);}else if(k==='-'||k==='_'){e.preventDefault();changeSpeed(-1);}else if(k==='?'){e.preventDefault();say(SHORTCUTS);}});
-setDemo();S=readS();frames=demoFrames();draw();updStatus();
-renderUploadList();
-setDetectBadge('off','waiting for images.');
-setAutoStatus('Auto colorbar detection is idle.');
-// Chrysanthos: open on the real NASA night lights. The made-up demo is no longer in the menu, it only shows up if the
-// NASA data file can't be loaded, so the page is never empty.
-if(window.EJ_PRESETS&&window.EJ_PRESETS.nightlights){$('preset').value='nightlights';usePreset('nightlights').finally(()=>{booting=false;});}
-else{$('preset').querySelector('[value=nightlights]').disabled=true;$('intro').textContent='The NASA data file (data/nightlights.js) could not be loaded, so this is a made-up demo map, not real data. You can still add your own maps below.';booting=false;}
+ if(mv){e.preventDefault();exMove(mv[0],mv[1],e.shiftKey?

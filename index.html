@@ -8,7 +8,7 @@
 <!-- Chrysanthos: everything is local (no web fonts, no trackers), so it also works offline by double-clicking.
      The ?v= number makes browsers fetch the new file after a change (GitHub Pages lets them keep old copies for 10 minutes,
      and new HTML with an old CSS/JS breaks the page). Change the number in all three places when you edit css, js or data. -->
-<link rel="stylesheet" href="css/style.css?v=20261114-8">
+<link rel="stylesheet" href="css/style.css?v=20261114-9">
 </head><body>
 <a class="skip" href="#player">Skip to the player</a>
 <div class="sky" aria-hidden="true"></div>
@@ -123,9 +123,9 @@
 <div class="grid g3"><label class="field">Minimum value <input type="number" id="vmin" step="any"></label><label class="field">Maximum value <input type="number" id="vmax" step="any"></label><label class="field">Units <input type="text" id="units" size="14"></label></div>
 <details><summary>Advanced: colour tolerance, map area and map extent</summary>
 <div class="grid g4"><label class="field">Colour match tolerance <input type="number" id="tol" value="50" min="5" max="150"></label></div>
-<!-- Chrysanthos: if the image has a title, colorbar or border around the map, those get read as data. Trim them off here -->
 <p class="m hint">If your images have a title, a colorbar or a border around the map, trim it off so only the map itself is used.</p>
 <div class="grid g4"><label class="field">Trim top % <input type="number" id="cropT" value="0" min="0" max="90"></label><label class="field">Trim bottom % <input type="number" id="cropB" value="0" min="0" max="90"></label><label class="field">Trim left % <input type="number" id="cropL" value="0" min="0" max="90"></label><label class="field">Trim right % <input type="number" id="cropR" value="0" min="0" max="90"></label></div>
+<div class="grid g4"><label class="field">Hide area left % <input type="number" id="hideL" value="0" min="0" max="100"></label><label class="field">Hide area top % <input type="number" id="hideT" value="0" min="0" max="100"></label><label class="field">Hide area width % <input type="number" id="hideW" value="0" min="0" max="100"></label><label class="field">Hide area height % <input type="number" id="hideH" value="0" min="0" max="100"></label></div>
 <div class="grid g4"><label class="field">South latitude <input type="number" id="lat0" value="-90"></label><label class="field">North latitude <input type="number" id="lat1" value="90"></label><label class="field">West longitude <input type="number" id="lon0" value="-180"></label><label class="field">East longitude <input type="number" id="lon1" value="180"></label></div></details>
 </section>
 
@@ -157,5 +157,5 @@
 <p class="m disclaimer">This is an independent project, not an official NASA product.</p>
 </footer>
 <!-- Chrysanthos: preset data, built by tools/build_nightlights.py. If it's missing the page falls back to the demo -->
-<script src="data/nightlights.js?v=20261114-8"></script>
-<script src="js/app.js?v=20261114-8"></script></body></html>
+<script src="data/nightlights.js?v=20261114-9"></script>
+<script src="js/app.js?v=20261114-9"></script></body></html>
