@@ -68,6 +68,17 @@ PRESET = {
     "units": "brightness",
     "lat": [-90, 90],
     "lon": [-180, 180],
+    # Chrysanthos: words for the "hear only the change" mode (2023 minus 2012), see describeChange() in js/app.js
+    "change": {
+        "legend": (
+            "A bright, high tone means lights appeared or got brighter there. "
+            "A low buzz means lights got dimmer or went out. Silence means no change."
+        ),
+        "up": "Lights grew the most near",
+        "down": "Lights dimmed the most near",
+        "more": "got brighter",
+        "less": "got dimmer",
+    },
 }
 
 

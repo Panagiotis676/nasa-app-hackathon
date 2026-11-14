@@ -13,7 +13,11 @@
 
 <section class="card" aria-labelledby="hp"><h2 id="hp">Player</h2>
 <!-- Chrysanthos: ready-made maps, so you can hear real NASA data without having to see the map to set it up -->
+<div class="grid g2">
 <label class="field">Choose a map <select id="preset"><option value="nightlights">NASA: Earth's night lights, 2012 to 2023</option><option value="demo">Demo: made-up temperature map</option><option value="upload" disabled>Your own images (add them under Data)</option></select></label>
+<!-- Chrysanthos: "hear the change" mode, one sweep of last minus first frame. See mkChange() in js/app.js -->
+<label class="field">Listen to <select id="view"><option value="frames">Every frame, one after another</option><option value="change">Only what changed, first to last frame</option></select></label>
+</div>
 <p id="intro"></p>
 <p id="status">Loading…</p>
 <div class="screen"><canvas id="cv" width="320" height="160" role="img" aria-label="Earth map frame"></canvas></div>
@@ -54,7 +58,8 @@
 <li><span class="k"><kbd>Left arrow</kbd> or <kbd>P</kbd></span> previous frame</li>
 <li><span class="k"><kbd>R</kbd></span> replay the frame</li>
 <li><span class="k"><kbd>D</kbd></span> describe the frame</li>
-<li><span class="k"><kbd>L</kbd></span> how to listen</li></ul></section>
+<li><span class="k"><kbd>L</kbd></span> how to listen</li>
+<li><span class="k"><kbd>C</kbd></span> switch between every frame and only what changed</li></ul></section>
 
 <section class="card" aria-labelledby="ha"><h2 id="ha">How it works</h2>
 <ul class="how">
@@ -62,6 +67,7 @@
 <li><strong>Left to right.</strong> The sound sweeps west to east, with your left ear at the west edge and your right ear at the east edge.</li>
 <li><strong>Pitch and loudness.</strong> Pitch is latitude, with north higher and south lower, and loudness is the data value. Pitches use a pentatonic scale so any data sounds musical, and silence means no data.</li>
 <li><strong>Change over time.</strong> Values are scaled the same way across all frames, so changes over time stay audible. A rising chime between frames means the average went up, and a falling chime means it went down.</li>
+<li><strong>Hear only the change.</strong> Choose “Only what changed” (or press C) to hear one sweep of the last frame minus the first. A bright, high tone means the value went up there, a low buzz means it went down, and silence means no change. The voice then names the places that changed the most.</li>
 </ul>
 <p class="m">Colours decoded from an image are an approximation of the true data.</p></section>
 </main>
