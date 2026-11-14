@@ -76,8 +76,11 @@ function hoverLabel(el){
 // Chrysanthos: hover speech only while Explore is on, otherwise just moving the mouse around the page kept talking.
 // Not over the map itself: in Explore the map plays its own note under the mouse.
 function announceHover(el){
- if(booting||!exploring||el.id==='cv'||!$('speech').checked||!('speechSynthesis' in window))return;
- const msg=hoverLabel(el);speakEnglish(msg.en);
+ if(booting||!exploring||tourRunning||el.id==='cv'||!$('speech').checked||!('speechSynthesis' in window))return;
+ const msg=hoverLabel(el);speechSynthesis.cancel();
+ const en=new SpeechSynthesisUtterance(msg.en);en.lang='en-US';
+ const elGR=new SpeechSynthesisUtterance(msg.el);elGR.lang='el-GR';
+ speechSynthesis.speak(en);speechSynthesis.speak(elGR);
 }
 document.addEventListener('mouseover',e=>{
  const el=e.target&&e.target.closest?e.target.closest('a,button,select,input,summary,[role="button"],[role="link"],[role="slider"],[role="img"]'):null;
@@ -392,7 +395,9 @@ $('view').addEventListener('change',()=>setView($('view').value));
 $('cbar').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;let im;try{im=await loadImg(f);}catch(err){announce('Could not read '+err.message+'.');return;}
 const c=document.createElement('canvas'),s=Math.min(1,1024/Math.max(im.width,im.height));c.width=Math.max(1,Math.round(im.width*s));c.height=Math.max(1,Math.round(im.height*s));
 const x=c.getContext('2d');x.drawImage(im,0,0,c.width,c.height);const d=x.getImageData(0,0,c.width,c.height).data,W=c.width,H=c.height,wide=W>=H,len=wide?W:H,th=wide?H:W,line=[];
-for(let i=0;i<len;i++){let r=0,g=0,b=0;for(let j=0;j<th;j++){const o=4*(wide?j*W+i:i*W+j);r+=d[o];g+=d[o+1];b+=d[o+2];}line.push([r/th,g/th,b/th]);}
+// Chrysanthos: same as Panagiotis's fix in image_describer.py, skip 3% at each end so pointed caps and outlines aren't read as colours
+const pad=Math.max(2,Math.floor(len*.03));
+for(let i=pad;i<Math.max(pad+1,len-pad);i++){let r=0,g=0,b=0;for(let j=0;j<th;j++){const o=4*(wide?j*W+i:i*W+j);r+=d[o];g+=d[o+1];b+=d[o+2];}line.push([r/th,g/th,b/th]);}
 if(!wide)line.reverse(); // tall bar: bottom = minimum
 manualCustomLut=true;makeCustomLutFromLine(line);$('cmap').value='custom';setDetectBadge('manual','using uploaded colorbar image.');setAutoStatus('Using uploaded colorbar image.');rebuild('Colorbar loaded, now set the minimum and maximum printed on it.');});
 
@@ -475,14 +480,15 @@ function setExplore(on,quiet){if(on===exploring)return;if(on&&!frames.length){an
  exploring=on;$('explore').setAttribute('aria-pressed',String(on));$('cv').classList.toggle('exploring',on);
  if(on){pause();[exLat,exLon]=exLat===null?exClamp((S.lat0+S.lat1)/2,(S.lon0+S.lon1)/2):exClamp(exLat,exLon);draw();if(!quiet)say(frameDescription(frames[fIdx],fIdx)||'No pre-written description is available for this uploaded map.');}
  else{exDrag=false;clearTimeout(exTm);draw();if(!quiet)announce('Explore mode off. The arrow keys change the frame again.');}}
-function exSpeak(){const f=frames[fIdx];if(!f)return;const v=exAvg(f.vals,f.W,f.H,exLat,exLon),pl=placeAt(exLat,exLon),ns=Math.round(exLat),ew=Math.round(exLon);
+function exText(){const f=frames[fIdx];if(!f)return'';const v=exAvg(f.vals,f.W,f.H,exLat,exLon),pl=placeAt(exLat,exLon),ns=Math.round(exLat),ew=Math.round(exLon);
  let t=(pl?pl+', ':'')+Math.abs(ns)+' degrees '+(ns>=0?'north':'south')+', '+Math.abs(ew)+' '+(ew>=0?'east':'west')+': ';
  if(v!==v)t+='no data here.';
  else if(f.change){const base=exAvg(f.from.vals,f.W,f.H,exLat,exLon);
   if(Math.abs(v)<f.thr)t+='about the same from '+f.from.name+' to '+f.to.name+'.';
   else{const p=S.vmin>=0&&base>0?Math.abs(100*v/base):NaN;t+='went '+(v>0?'up ':'down ')+(p===p?(p<10?p.toFixed(1):Math.round(p))+' percent':fmt(Math.abs(v))+u())+' from '+f.from.name+' to '+f.to.name+'.';}}
  else{const q=exLevel(f,v),w=S.units==='brightness'?['dark','dim','medium','bright','very bright']:['very low','low','medium','high','very high'];t+=fmt(v)+u()+', '+w[Math.min(4,Math.floor(q*5))]+'.';}
- say(t);}
+ return t;}
+function exSpeak(){const t=exText();if(t)say(t);}
 const exPoint=e=>{const r=$('cv').getBoundingClientRect();return[S.lat1-(e.clientY-r.top)/r.height*(S.lat1-S.lat0),S.lon0+(e.clientX-r.left)/r.width*(S.lon1-S.lon0)];};
 $('explore').onclick=()=>setExplore(!exploring);
 $('stopSpeech').onclick=()=>{if('speechSynthesis' in window)speechSynthesis.cancel();setSpeechStatus('');$('live').textContent='';};
@@ -490,14 +496,59 @@ $('stopSpeech').onclick=()=>{if('speechSynthesis' in window)speechSynthesis.canc
 $('cv').addEventListener('pointerdown',e=>{if(!frames.length)return;if(!exploring)setExplore(true);exDrag=true;try{$('cv').setPointerCapture(e.pointerId);}catch(_err){/* not supported */}exGo(...exPoint(e));});
 // in Explore a mouse plays just by moving over the map, no click needed (a finger has to touch, so that one needs exDrag)
 // the cross always follows the pointer, but notes are at most one every 120 ms, and the spot where it stops always gets its note
-$('cv').addEventListener('pointermove',e=>{if(!exploring||!(exDrag||e.pointerType==='mouse'))return;clearTimeout(exTm);if(performance.now()-exT>120){exGo(...exPoint(e));return;}
+$('cv').addEventListener('pointermove',e=>{if(!exploring||tourRunning||!(exDrag||e.pointerType==='mouse'))return;clearTimeout(exTm);if(performance.now()-exT>120){exGo(...exPoint(e));return;}
  [exLat,exLon]=exClamp(...exPoint(e));draw();exTm=setTimeout(()=>{exT=performance.now();exTone();},120);});
 ['pointerup','pointercancel'].forEach(n=>$('cv').addEventListener(n,()=>{exDrag=false;}));
+// Chrysanthos: the 1-minute tour (T or the button in the top part). It gives the demo we'd give the judges, by itself:
+// night lights, what changed, Explore over India, then the NO2 example. The text also goes in the description box,
+// so people watching a projector can read along. Any key, click or tap stops it.
+let tourId=0,tourRunning=false,tourSpeed='8';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+// speaks and waits until it's said (or, with the voice off, gives the screen reader about as long as it needs)
+function tourSpeak(t){return new Promise(ok=>{$('dtxt').textContent=t;const est=1500+t.length*75;let done=false;const fin=()=>{if(!done){done=true;ok();}};
+ // one sentence per utterance: some Chrome voices stop after about 15 seconds of one long utterance and never say they're done.
+ // (split on ". " and not on "." so numbers like 0.08 stay whole; no lookbehind regex, older iPhones don't have it)
+ if($('speech').checked&&'speechSynthesis' in window){speechSynthesis.cancel();const parts=t.replace(/([.!?])\s+/g,'$1\n').split('\n');
+  parts.forEach((s,i)=>{const m=new SpeechSynthesisUtterance(s);m.lang='en';m.onerror=fin;if(i===parts.length-1)m.onend=fin;speechSynthesis.speak(m);});setTimeout(fin,est*1.3);}
+ else{$('live').textContent='';setTimeout(()=>{$('live').textContent=t;},60);setTimeout(fin,est);}});}
+function setTourBtn(on){const b=$('tour');b.textContent=on?'Stop the tour':'Take the 1-minute tour';b.dataset.on=on?'1':'';}
+function stopTour(){if(!tourRunning)return;tourRunning=false;tourId++;$('speed').value=tourSpeed;setTourBtn(false);if(exploring)setExplore(false,true);pause();}
+async function startTour(){if(tourRunning)return;const id=++tourId,alive=()=>{if(id!==tourId)throw new Error('stopped');};
+ tourRunning=true;tourSpeed=$('speed').value;setTourBtn(true);if(exploring)setExplore(false,true);pause();$('player').scrollIntoView({block:'start'});
+ const sweep=async()=>{$('speed').value='4';await play();alive();await sleep(3800);alive();pause();};
+ const visit=async(la,lo)=>{setExplore(true,true);exGo(la,lo);await sleep(700);alive();await tourSpeak(exText());alive();setExplore(false,true);};
+ try{
+  if(view!=='frames')setView('frames');
+  if($('preset').value!=='nightlights'){$('preset').value='nightlights';await usePreset('nightlights');alive();}
+  fIdx=0;pos=0;draw();updStatus();
+  await tourSpeak('Welcome to Earth Jukebox, NASA maps you can hear. This is Earth at night in 2012, from NASA Black Marble. The sound sweeps from west, in your left ear, to east, in your right. Higher notes are further north, and louder means more light.');alive();
+  await sweep();
+  setView('change');
+  await tourSpeak('Now only what changed from 2012 to 2023. A clean tone means the lights grew, a low buzz means they dimmed.');alive();
+  await sweep();
+  const f=frames[0],grew=f.from&&f.from.st.mean>0?Math.round(100*f.st.mean/f.from.st.mean):null,top=f.st.up&&f.st.up[0]?f.st.up[0][0]:null;
+  await tourSpeak((grew!==null?'Overall the lights '+(grew>=0?'grew':'dimmed')+' by about '+Math.abs(grew)+' percent.':'')+(top?' They grew the most near '+top+'.':''));alive();
+  await tourSpeak('You can also explore the map yourself, with E and the arrow keys, or with a finger. Let\'s go to India.');alive();
+  await visit(23,78);
+  await tourSpeak('Last, your own maps. This NASA example shows air pollution over New York, before and during the 2020 lockdown.');alive();
+  $('preset').value='example';await loadExample();alive();
+  await sweep();
+  await visit(40.7,-74);
+  setView('frames');$('preset').value='nightlights';await usePreset('nightlights');alive();
+  await tourSpeak('That was the tour. Press Play to listen, E to explore, or question mark to hear all the keys.');alive();
+  tourRunning=false;$('speed').value=tourSpeed;setTourBtn(false);
+ }catch(_err){/* stopped by the user, stopTour() already tidied up */}}
+$('tour').onclick=()=>tourRunning?stopTour():startTour();
+// a click or tap anywhere else stops the tour (the keys are handled in the keydown listener)
+document.addEventListener('pointerdown',e=>{if(tourRunning&&!(e.target.closest&&e.target.closest('#tour')))stopTour();},true);
 // Chrysanthos: + and - change the speed, ? reads all the shortcuts (both were in the plan in ARCHITECTURE.md)
-const SHORTCUTS='Keyboard shortcuts. Space: play or pause. Right arrow or N: next frame. Left arrow or P: previous frame. R: replay the frame. D: describe the frame. L: how to listen. C: switch between every frame and only what changed. Plus or minus: faster or slower. E: explore the map, the arrow keys move around it and Enter says the place and the value. Escape or E again: leave Explore. Question mark: read these shortcuts again.';
+const SHORTCUTS='Keyboard shortcuts. Space: play or pause. Right arrow or N: next frame. Left arrow or P: previous frame. R: replay the frame. D: describe the frame. L: how to listen. C: switch between every frame and only what changed. Plus or minus: faster or slower. E: explore the map, the arrow keys move around it and Enter says the place and the value. Escape or E again: leave Explore. T: take the 1-minute tour, any key stops it. Question mark: read these shortcuts again.';
 function changeSpeed(d){const s=$('speed'),i=s.selectedIndex+d;if(i<0||i>=s.options.length){announce(d>0?'This is already the fastest speed.':'This is already the slowest speed.');return;}s.selectedIndex=i;announce('Speed: '+s.options[i].text+'.');}
 // Chrysanthos: letters are read from the key's position when the layout isn't Latin, so D, L, C... also work with a Greek keyboard (it types δ, λ, ψ)
 document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const t=e.target.tagName;if(t==='INPUT'||t==='SELECT'||t==='TEXTAREA')return;let k=e.key.toLowerCase();if(k.length===1&&!/[a-z0-9 ?+\-=_]/.test(k)&&/^Key[A-Z]$/.test(e.code||''))k=e.code.slice(3).toLowerCase();if(e.code==='Slash'&&e.shiftKey)k='?';
+// Chrysanthos: T starts or stops the tour. During the tour any other key stops it first (not Tab or Shift, and not on the tour button, its click does that)
+if(k==='t'){e.preventDefault();tourRunning?stopTour():startTour();return;}
+if(tourRunning&&k!=='tab'&&k!=='shift'&&e.target.id!=='tour'){stopTour();if(k==='escape'){e.preventDefault();return;}}
 // Chrysanthos: in Explore the arrows move the cursor instead of changing the frame, Enter speaks the spot. Enter on another button still presses it.
 if(k==='e'){e.preventDefault();setExplore(!exploring);return;}
 if(exploring){const mv={arrowup:[1,0],arrowdown:[-1,0],arrowleft:[0,-1],arrowright:[0,1]}[k];
