@@ -69,6 +69,7 @@ button{min-height:2.9rem;padding:.5rem 1.2rem;border:1.5px solid var(--field-bd)
 button:hover{background:var(--btn-hover)}
 button.p{min-width:9rem;min-height:3.4rem;font-size:1.2rem;font-weight:800;background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
 button.p:hover{background:var(--acc);filter:brightness(1.1)}
+button.subtle{min-height:2.2rem;padding:.3rem .9rem;font-weight:600}
 :focus-visible{outline:3px solid var(--focus);outline-offset:3px}
 
 /* player */
@@ -78,6 +79,20 @@ canvas{display:block;width:100%;height:auto}
 .controls{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center}
 .settings{margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--line)}
 #dtxt{margin:0;min-height:3rem;padding:1rem 1.15rem;border:1px solid var(--line);border-left:4px solid var(--acc);border-radius:var(--r-sm);background:var(--sunken)}
+
+/* upload manager */
+.uploads{margin:.75rem 0 1.25rem;padding:1rem;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--sunken)}
+.uploads-head{display:flex;flex-wrap:wrap;gap:.5rem .75rem;justify-content:space-between;align-items:center}
+.upload-list{list-style:none;margin:.6rem 0 0;padding:0;display:grid;gap:.5rem;max-height:14rem;overflow:auto}
+.upload-list li{display:flex;gap:.75rem;justify-content:space-between;align-items:center;padding:.45rem .55rem;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+.upload-list .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:75%}
+.upload-list .empty{justify-content:flex-start;color:var(--mut);font-style:italic}
+.upload-list button{min-height:2rem;padding:.2rem .75rem;font-size:.95rem}
+#autoColorbarStatus{margin-top:.4rem}
+.detect-badge{margin:.2rem 0 .8rem;padding:.55rem .75rem;border:1px solid var(--line);border-radius:9px;background:var(--sunken);font-weight:650}
+.detect-badge.off{color:var(--mut)}
+.detect-badge.auto{border-color:#2f855a;background:rgba(47,133,90,.1)}
+.detect-badge.manual{border-color:#2b6cb0;background:rgba(43,108,176,.12)}
 
 /* advanced options */
 details{margin-top:1.5rem;padding:0 1.1rem;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--sunken)}

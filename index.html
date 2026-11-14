@@ -36,12 +36,20 @@
 <p class="m">The night lights map is real NASA data and is ready to play. To hear other data, export map frames from the NASA Earth Information Center and add them here in time order (files are sorted by name). Then choose the colormap (or upload a picture of the map’s colorbar) and the value range printed on it.</p>
 <!-- Chrysanthos: the "Use demo frames" button moved into "Choose a map" at the top -->
 <label class="field">Add map frames (PNG or JPEG) <input type="file" id="files" accept="image/*" multiple></label>
+ <div class="uploads" aria-live="polite">
+ <div class="uploads-head"><strong>Uploaded frames</strong> <button type="button" id="clearUploads">Clear all</button></div>
+ <p id="uploadHint" class="m hint">Add files in batches. New selections are appended and sorted by name.</p>
+ <ul id="uploadList" class="upload-list"></ul>
+ </div>
 <div class="grid g2">
 <label class="field">Colormap <select id="cmap"><option value="diverging">Blue, white, red (anomaly maps)</option><option value="viridis">Viridis</option><option value="inferno">Inferno</option><option value="plasma">Plasma</option><option value="jet">Rainbow (jet)</option><option value="gray">Brightness only (no colormap)</option><option value="custom" disabled>From your colorbar image</option></select></label>
 <!-- Chrysanthos: most NASA maps use their own colour scale, so the built-in ones often don't match. Same idea as --colorbar in image_describer.py -->
 <label class="field">Or upload the map’s colorbar <input type="file" id="cbar" accept="image/*"></label>
 </div>
-<p class="m hint">Crop that picture so only the coloured bar is in it. A wide bar is read from left (minimum) to right (maximum), a tall bar from bottom (minimum) to top (maximum).</p>
+ <p id="cmapDetect" class="detect-badge off">Colorbar status: waiting for images.</p>
+ <label class="check"><input type="checkbox" id="autoColorbar" checked> <span>Auto-detect colorbars embedded in map frames</span></label>
+ <p class="m hint">If a map includes a colorbar near an edge, the app can detect it, crop it from the map area, and use it as the colormap. You can still upload a manual colorbar to override.</p>
+ <p id="autoColorbarStatus" class="m hint">Auto colorbar detection is idle.</p>
 <div class="grid g3"><label class="field">Minimum value <input type="number" id="vmin" step="any"></label><label class="field">Maximum value <input type="number" id="vmax" step="any"></label><label class="field">Units <input type="text" id="units" size="14"></label></div>
 <details><summary>Advanced: colour tolerance, map area and map extent</summary>
 <div class="grid g4"><label class="field">Colour match tolerance <input type="number" id="tol" value="50" min="5" max="150"></label></div>
