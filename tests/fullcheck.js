@@ -224,6 +224,14 @@ const check = (name, ok, info = '') => results.push([ok ? 'PASS' : 'FAIL', name,
   await key('Escape');
   check('Any key stops the tour at once', !(await ev(() => tourRunning)) && !(await ev(() => playing)) && (await p.textContent('#tour')) === 'Take the 1-minute tour' && (await p.inputValue('#speed')) === '8');
 
+  // S. sea surface temperature (the one map of Chara's new set that is in the menu)
+  check('Menu: night lights, the NO2 example, sea surface temperature, your own images', (await p.$$eval('#preset option', l => l.map(o => o.value).join())) === 'nightlights,example,sea-surface-temperature,upload', await p.$$eval('#preset option', l => l.map(o => o.value).join()));
+  await p.selectOption('#preset', 'sea-surface-temperature'); await p.waitForTimeout(2500);
+  const sst = await ev(() => { const f = frames[0], at = (la, lo) => exAvg(f.vals, f.W, f.H, la, lo), L = S.lut; return { n: frames.length, warm: at(0, 150), south: at(-60, -120), atl: at(45, -30), ends: Math.min(...L[0]) + Math.max(...L[0]) > 60 && Math.max(...L[255]) > 150, d: describe(f, 0) }; });
+  check('Sea surface temperature reads right, also offline: warm pool ~30, N Atlantic ~15, Southern Ocean ~2 °C', sst.n === 1 && sst.ends && sst.warm > 28 && sst.warm < 32 && sst.atl > 11 && sst.atl < 18 && sst.south < 5, `warm pool ${sst.warm.toFixed(1)}, N Atlantic ${sst.atl.toFixed(1)}, Southern Ocean ${sst.south.toFixed(1)}`);
+  check('Sea surface temperature: hottest place is in the tropics, not a corner of the picture', /near (the Philippines|Indonesia|Southeast Asia|Malaysia|Vietnam)/.test(sst.d), (sst.d.match(/highest value is near [^.]*/) || [''])[0]);
+  await p.selectOption('#preset', 'nightlights'); await p.waitForTimeout(1500);
+
   // N. page
   check('Skip link goes to the player', (await p.getAttribute('.skip', 'href')) === '#player');
   check('No light theme left', (await p.$('#themeBtn')) === null);

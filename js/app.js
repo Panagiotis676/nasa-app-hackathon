@@ -17,7 +17,7 @@ function pauseSonifyOnly(){playing=false;clearInterval(timer);if(ac)voices.conca
 function lutFor(n){if(n==='gray')return null;if(n==='custom')return customLut;const s=HEX[n].map(h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16))),L=[];for(let i=0;i<256;i++){const p=i/255*(s.length-1),k=Math.min(Math.floor(p),s.length-2),f=p-k;L.push([0,1,2].map(c=>s[k][c]+(s[k+1][c]-s[k][c])*f));}return L;}
 // Chrysanthos: brightness mode now uses the min/max boxes too. It was stuck on 0..1, and dim maps like night lights came out almost silent.
 // Also reads the trim boxes (crop).
-function readS(){const c=$('cmap').value,g=c==='gray',tr=id=>Math.max(0,Math.min(90,+$(id).value||0));return{gray:g,lut:lutFor(c),vmin:+$('vmin').value,vmax:+$('vmax').value,units:$('units').value.trim()||(g?'brightness':''),tol:+$('tol').value||50,lat0:+$('lat0').value,lat1:+$('lat1').value,lon0:+$('lon0').value,lon1:+$('lon1').value,autoColorbar:$('autoColorbar').checked,crop:{t:tr('cropT'),b:tr('cropB'),l:tr('cropL'),r:tr('cropR')}};}
+function readS(){const c=$('cmap').value,g=c==='gray',tr=id=>Math.max(0,Math.min(90,+$(id).value||0));return{gray:g,lut:lutFor(c),vmin:+$('vmin').value,vmax:+$('vmax').value,units:$('units').value.trim()||(g?'brightness':''),tol:+$('tol').value||50,lat0:+$('lat0').value,lat1:+$('lat1').value,lon0:+$('lon0').value,lon1:+$('lon1').value,autoColorbar:$('autoColorbar').checked,crop:{t:tr('cropT'),b:tr('cropB'),l:tr('cropL'),r:tr('cropR')},shade:!!(preset&&preset.shade)};}
 const u=()=>S.units?' '+S.units:'';
 // Chrysanthos: decimals depend on the value range. With a fixed 2 decimals the night lights (avg ~0.004) all read as "0.00"
 const fmt=n=>n.toFixed(Math.max(0,Math.min(6,2-Math.floor(Math.log10(Math.abs(S.vmax-S.vmin)||1)))));
@@ -93,7 +93,9 @@ function say(t){$('dtxt').textContent=t;mapLabel(t);announce(t,true);}
 // Chrysanthos: Chara's written descriptions (data/descriptions.json) describe what the picture looks like, so they are the map's
 // image description for screen readers. D still gives the numbers worked out from the data (average, where it's highest, change in %).
 function mapLabel(t){const f=frames[fIdx],w=f?frameDescription(f,fIdx):'';$('cv').setAttribute('aria-label',w||'Earth map frame.'+(t?' '+t:''));}
-function decode(raw){const d=raw.data,n=raw.width*raw.height,v=new Float32Array(n),t2=S.tol*S.tol,L=S.lut;for(let i=0;i<n;i++){const r=d[4*i],g=d[4*i+1],b=d[4*i+2];if(d[4*i+3]<128){v[i]=NaN;continue;}if(!L){v[i]=(.2126*r+.7152*g+.0722*b)/255;continue;}let best=1e9,bi=0;for(let k=0;k<256;k++){const c=L[k],e=(r-c[0])**2+(g-c[1])**2+(b-c[2])**2;if(e<best){best=e;bi=k;}}v[i]=best<=t2?S.vmin+(S.vmax-S.vmin)*bi/255:NaN;}return v;}
+// Chrysanthos: S.shade (a preset setting) is for maps whose colours fade to dark, like the flow lines of the sea surface temperature map:
+// the colour is brightened to full strength before it's matched, so the hue decides the value. Grey (land) and near black stay "no data".
+function decode(raw){const d=raw.data,n=raw.width*raw.height,v=new Float32Array(n),t2=S.tol*S.tol,L=S.lut;for(let i=0;i<n;i++){let r=d[4*i],g=d[4*i+1],b=d[4*i+2];if(d[4*i+3]<128){v[i]=NaN;continue;}if(!L){v[i]=(.2126*r+.7152*g+.0722*b)/255;continue;}if(S.shade){const mx=Math.max(r,g,b);if(mx<40||mx-Math.min(r,g,b)<30){v[i]=NaN;continue;}const k=250/mx;r*=k;g*=k;b*=k;}let best=1e9,bi=0;for(let k=0;k<256;k++){const c=L[k],e=(r-c[0])**2+(g-c[1])**2+(b-c[2])**2;if(e<best){best=e;bi=k;}}v[i]=best<=t2?S.vmin+(S.vmax-S.vmin)*bi/255:NaN;}return v;}
 function mkFrame(name,W,H,vals,disp){const B=12,f={name,W,H,vals,disp,B:new Float32Array(B*W)},e=[];for(let i=0;i<=B;i++)e.push(Math.round(i*H/B));let n=0,sum=0,mn=Infinity,mx=-Infinity,mi=0,nN=0,sN=0,nS=0,sS=0;
 for(let y=0;y<H;y++)for(let x=0;x<W;x++){const v=vals[y*W+x];if(v!==v)continue;n++;sum+=v;if(v<mn)mn=v;if(v>mx){mx=v;mi=y*W+x;}if(y<H/2){nN++;sN+=v;}else{nS++;sS+=v;}}
 for(let b=0;b<B;b++)for(let x=0;x<W;x++){let c=0,t=0;for(let y=e[b];y<e[b+1];y++){const v=vals[y*W+x];if(v===v){c++;t+=v;}}f.B[b*W+x]=c>=Math.max(1,.3*(e[b+1]-e[b]))?cl((t/c-S.vmin)/(S.vmax-S.vmin)):0;}
@@ -403,6 +405,7 @@ $('uploadList').addEventListener('click',e=>{const id=e.target&&e.target.dataset
 $('clearUploads').addEventListener('click',()=>{if(!uploaded.length)return;uploaded=[];sources=[];renderUploadList();if($('preset').value==='upload'){pause();frames=[];draw();updStatus();announce('All uploaded frames were removed. Add images to begin.');}});
 
 // Chrysanthos: load a ready-made map. Sets the colormap, range, units and extent for you, then plays like uploaded images.
+const readable=im=>{try{const c=document.createElement('canvas');c.width=c.height=1;const x=c.getContext('2d');x.drawImage(im,0,0,1,1);x.getImageData(0,0,1,1);return true;}catch(_err){return false;}};
 async function usePreset(id){pause();
 if(id==='example'){loadExample();return;}
 if(id==='demo'){setDemo();fIdx=0;rebuild('Demo with made-up data.');return;}
@@ -410,6 +413,9 @@ if(id==='upload'){if(!uploaded.length)return;preset=null;sources=uploaded;mode='
 const P=(window.EJ_PRESETS||{})[id];if(!P){announce('This map is missing, the file data/'+id+'.js was not found.');return;}
 $('status').textContent='Loading '+P.title+'…';
 let imgs;try{imgs=await Promise.all(P.frames.map(f=>loadURL(f.src,f.name)));}catch(err){announce('Could not load '+P.title+'.');return;}
+// Chrysanthos: a map loaded from an image file (not stored in a data/*.js file) can't be read when index.html is opened from the disk.
+// Say so, and go back to what was playing, instead of failing quietly with the old map still showing.
+if(!readable(imgs[0])){announce(P.title+' only works in the online version, not when the page is opened from a file.');$('preset').value=preset?preset.id:'nightlights';updStatus();return;}
 $('cmap').value=P.cmap;$('vmin').value=P.vmin;$('vmax').value=P.vmax;$('units').value=P.units||'';
 $('lat0').value=P.lat[0];$('lat1').value=P.lat[1];$('lon0').value=P.lon[0];$('lon1').value=P.lon[1];
 ['cropT','cropB','cropL','cropR'].forEach(k=>{$(k).value=P.crop&&P.crop[{cropT:'t',cropB:'b',cropL:'l',cropR:'r'}[k]]||0;});

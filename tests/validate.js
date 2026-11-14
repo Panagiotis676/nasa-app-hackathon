@@ -39,6 +39,11 @@ const REPO = process.argv[2] || require('path').resolve(__dirname, '..');
   });
   console.log('NO2', no2);
 
+  // 2b. Sea surface temperature: values at places with well known temperatures
+  await p.selectOption('#preset', 'sea-surface-temperature'); await p.waitForTimeout(2500);
+  console.log('SST', await p.evaluate(() => { const f = frames[0], at = (la, lo) => exAvg(f.vals, f.W, f.H, la, lo).toFixed(1);
+    return 'Pacific warm pool ' + at(0, 150) + ', Indian Ocean ' + at(-10, 80) + ', eastern Pacific ' + at(0, -100) + ', North Atlantic ' + at(45, -30) + ', Labrador Sea ' + at(58, -55) + ', Southern Ocean ' + at(-60, -120) + ' °C'; }));
+
   // 3. Night lights: yearly averages
   await p.selectOption('#preset', 'nightlights'); await p.waitForTimeout(1500);
   console.log('lights', await p.evaluate(() => frames.map(f => f.name + ' ' + f.st.mean.toFixed(5)).join(', ')));
