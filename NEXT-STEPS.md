@@ -3,7 +3,8 @@
 > Από τον Chrysanthos, Σάββατο 14/11. Αύριο (Κυριακή) δεν θα είμαι διαθέσιμος, οπότε εδώ είναι
 > ό,τι χρειάζεστε για να τελειώσετε και να υποβάλετε.
 >
-> Αν το διαβάζει AI βοηθός: η ενότητα «Για όποιον αλλάξει κώδικα» στο τέλος εξηγεί πού είναι τι.
+> Αν το διαβάζει AI βοηθός: οι ενότητες «Για όποιον αλλάξει κώδικα» και «Για το AI που ελέγχει τις αλλαγές»
+> στο τέλος εξηγούν πού είναι τι, πώς γίνεται ο έλεγχος και ποιες αποφάσεις έχουμε πάρει.
 
 ## Τα βασικά
 
@@ -12,7 +13,7 @@
 | **Η υποβολή κλείνει** | **Κυριακή 15/11, 23:59** (τοπική ώρα). **Στόχος: υποβολή μέχρι τις 18:00.** |
 | **Η εφαρμογή online** | https://panagiotis676.github.io/nasa-app-hackathon/ |
 | **Repo** | https://github.com/Panagiotis676/nasa-app-hackathon (public) |
-| **Τελευταία έκδοση που δουλεύει σίγουρα** | το commit «Merge Panagiotis's upload list and colorbar detection with the change mode» (14/11) |
+| **Τελευταία έκδοση που δουλεύει σίγουρα** | το commit `7df59fa` «Keep only the maps the sweep can read…» (14/11 βράδυ, όλα τα τεστ περνάνε) |
 
 Το link της εφαρμογής ενημερώνεται μόνο του 1–2 λεπτά μετά από κάθε push στο `main`.
 
@@ -30,6 +31,12 @@
      **χαμηλό βουητό** = έσβησαν. Η φωνή λέει: *«Lights grew the most near China, the Middle East and India.
      Lights dimmed the most near western Europe and the Iberian Peninsula.»* Ο χάρτης γίνεται **χρυσός** και **μπλε**.
 - Φωνή που περιγράφει κάθε χρονιά (πλήκτρο **D**), πλήρης χειρισμός από πληκτρολόγιο, δουλεύει με screen reader.
+- **Explore (πλήκτρο E ή άγγιγμα στον χάρτη):** κινείς έναν σταυρό με τα βελάκια ή το δάχτυλο και ακούς το σημείο.
+  Το **Enter** λέει π.χ. *«India, 23 degrees north, 78 east: went up 108 percent in 2023 compared with 2012.»*
+- **Ξενάγηση 1 λεπτού (πλήκτρο T):** παίζει μόνη της όλο το demo με φωνή που εξηγεί.
+- Στο «Choose a map» υπάρχουν ακόμα: **ρύπανση NO₂ στη Νέα Υόρκη πριν και στο lockdown του 2020** (βγάζει −25%,
+  η NASA είχε μετρήσει ~30%) και **θερμοκρασία επιφάνειας θάλασσας** (ECCO2). Και μπορείς να ανεβάσεις δικούς σου χάρτες.
+- Η ενότητα **Validation** του README δείχνει ότι οι αριθμοί συμφωνούν με τη NASA (καλό για το κριτήριο Validity).
 
 **Σε μία πρόταση:** *Earth Jukebox lets blind people hear how our planet changes: NASA maps become sound,
 so you can hear where things are, how much, and how it changes year by year.*
@@ -68,8 +75,22 @@ spaceappschallenge.org → η σελίδα της ομάδας → **Project**. 
 - [ ] Το video έχει ήχο και ανοίγει χωρίς login.
 - [ ] Στη φόρμα υπάρχουν τα links: εφαρμογή, repo, video.
 - [ ] Το πεδίο για τη χρήση AI (αν υπάρχει) είναι συμπληρωμένο **ειλικρινά**.
-- [ ] **Σβήστε αυτό το αρχείο (`NEXT-STEPS.md`)** αφού αντιγράψετε τα κείμενα στη φόρμα, πριν την τελική υποβολή:
-      είναι εσωτερικές σημειώσεις και το repo το βλέπουν οι κριτές.
+- [ ] `node tests/fullcheck.js` περνάει όλο (ή τουλάχιστον: το link ανοίγει, Play, C, D, E, T δουλεύουν).
+
+### 5. Τι σβήνουμε πριν την τελική υποβολή (το repo το βλέπουν οι κριτές)
+Είναι εσωτερικά ή προσωρινά. Σβήστε τα **τελευταία**, αφού τα χρησιμοποιήσετε:
+- [ ] **`NEXT-STEPS.md`** (αυτό το αρχείο), αφού αντιγράψετε τα κείμενα στη φόρμα.
+- [ ] **`REVIEW.md`**, αν υπάρχει: είναι η αναφορά του AI που ελέγχει τις αλλαγές.
+- [ ] **`PITCH.md`**: το σενάριο της παρουσίασης με τις απαντήσεις για τους κριτές. Κρατήστε ένα αντίγραφο για εσάς.
+      (Αν μείνει, συμπληρώστε το «Fill in after testing» ή σβήστε εκείνη τη γραμμή.)
+- [ ] **Οι 6 κρυφοί χάρτες της Chara**, αν δεν διορθωθούν μέχρι τότε: οι φάκελοι `media/presets/forest-height`, `aerosols`,
+      `ocean-temperature`, `nightlights-change`, `lightning`, `carbon-dioxide`, οι αντίστοιχες εγγραφές στο `data/presets.js`
+      και στο `data/descriptions.js`, και το σχόλιο γι' αυτούς στο `index.html`. Δεν είναι στο μενού, είναι ~1,2 MB που δεν χρησιμοποιούνται.
+      **Μην** σβήσετε το `media/presets/sea-surface-temperature` (είναι η πηγή του χάρτη που υπάρχει στο μενού).
+- [ ] **Ο φάκελος `.idea/`**: ρυθμίσεις του PyCharm, μπήκε στο repo κατά λάθος. `git rm -r --cached .idea` και προσθήκη `.idea/` στο `.gitignore`.
+- [ ] Ελέγξτε ότι το README («Ideas and next steps») και το `ARCHITECTURE.md` δεν λένε «not built» για κάτι που έχει γίνει.
+
+**Μένουν:** `tests/` (δείχνει στους κριτές ότι το ελέγξαμε), `prototype/`, `media/` (τα χρησιμοποιούν τα tests και το README).
 
 ### Αν περισσέψει χρόνος (προαιρετικά, με αυτή τη σειρά)
 1. **Ασφάλεια (Panagiotis, 5 λεπτά):** Settings → Advanced Security → **Enable** στα: Private vulnerability
@@ -93,7 +114,8 @@ spaceappschallenge.org → η σελίδα της ομάδας → **Project**. 
 > can hear the world light up year by year, with a dip in 2020. A "hear only the change" mode plays 2023 minus
 > 2012 in one sweep, with a clean tone where lights appeared and a low buzz where they faded. A voice then names
 > the places that changed most: lights grew near China, the Middle East and India, and dimmed in western Europe.
-> It works with a keyboard and screen reader, in any browser, with nothing to install.
+> You can also explore any map yourself with the arrow keys or a finger, and a one-minute guided tour plays the whole demo
+> with a voice. It works with a keyboard and screen reader, in any browser and on phones, with nothing to install.
 
 **Project details**
 
@@ -105,8 +127,13 @@ spaceappschallenge.org → η σελίδα της ομάδας → **Project**. 
 > In "hear only the change" mode it plays the difference between the last and first frame in a single sweep,
 > using two clearly different sounds for increases and decreases, and names the regions that changed most.
 >
+> *Explore and check.* In Explore mode (E, or touching the map) you move a cursor with the arrow keys or a finger; each step
+> plays that spot, and Enter says the place and the value. Besides night lights there is NASA's sea surface temperature and an
+> example of NO₂ air pollution over New York before and during the 2020 lockdown, where the app reads drops of 22–37% in the big
+> cities, close to the ~30% NASA reported. We checked the colour-to-number step on maps with known values (about 0.5% error).
+>
 > *Accessibility.* Everything works from the keyboard (Space, arrows, D to describe, L for a listening guide,
-> C to switch modes), with a screen reader or the built-in voice. Descriptions give numbers, percentages
+> C to switch modes, E to explore, T for the tour), with a screen reader or the built-in voice. Descriptions give numbers, percentages
 > and place names. Uploaded images never leave the browser.
 >
 > *How we built it.* HTML, CSS and JavaScript with the Web Audio API and the Web Speech API, hosted on GitHub
@@ -120,6 +147,9 @@ spaceappschallenge.org → η σελίδα της ομάδας → **Project**. 
 
 > Night lights 2012–2023: NASA Black Marble yearly composites, NASA Scientific Visualization Studio,
 > https://svs.gsfc.nasa.gov/5276/ (as used in the Earth Information Center, https://svs.gsfc.nasa.gov/5313/).
+> Sea surface temperature: NASA ECCO2, https://svs.gsfc.nasa.gov/3912/.
+> NO₂ over the north-eastern US, March 2015–19 average and March 2020: NASA (OMI on the Aura satellite),
+> https://www.nasa.gov/centers-and-facilities/goddard/nasa-satellite-data-show-30-percent-drop-in-air-pollution-over-northeast-u-s
 
 **Use of AI** *(ΠΡΟΣΧΕΔΙΟ: διορθώστε το ώστε να λέει ακριβώς πώς δουλέψατε)*
 
@@ -175,6 +205,10 @@ spaceappschallenge.org → η σελίδα της ομάδας → **Project**. 
 | `css/style.css` | Εμφάνιση. Τα χρώματα είναι στην αρχή, πρώτα το ανοιχτό θέμα και μετά το σκοτεινό. |
 | `js/app.js` | Όλη η λογική. `decode` χρώμα → τιμή, `mkFrame` ήχος ενός frame, `mkChange` η λειτουργία «what changed», `describe` / `describeChange` τα κείμενα της φωνής, `REGIONS` ονόματα περιοχών, `initAudio` / `tick` ο ήχος, `rebuild` ξαναφτιάχνει τα frames, `usePreset` φορτώνει έτοιμο χάρτη. |
 | `data/nightlights.js` | Τα 12 χρόνια ως εικόνες. Φτιάχνεται από το `tools/build_nightlights.py`, μην το αλλάζετε με το χέρι. |
+| `data/examples.js` | Το παράδειγμα NO₂ (2 εικόνες + το colorbar του), φορτώνει μόνο όταν το διαλέξεις. |
+| `data/presets.js` | Οι χάρτες της Chara. Στο μενού είναι μόνο το sea surface temperature (εικόνες μέσα στο αρχείο, για offline). |
+| `data/descriptions.js` | Γραμμένες περιγραφές της εικόνας κάθε χάρτη (Chara). Είναι η περιγραφή του χάρτη για τον screen reader, όχι το D. |
+| `tests/` | Αυτόματοι έλεγχοι σε Chrome (`fullcheck`, `speechcheck`, `mobilecheck`, `validate`, `pitchcheck`). Οδηγίες στο `tests/README.md`. |
 | `image_describer.py` | Η ίδια ιδέα από τη γραμμή εντολών: εικόνες → WAV + κείμενο. |
 | `prototype/`, `media/` | Η πρώτη εκδοχή και τα αρχεία της. |
 
@@ -182,5 +216,48 @@ spaceappschallenge.org → η σελίδα της ομάδας → **Project**. 
 - **Κανόνας:** οι αλλαγές του Chrysanthos έχουν σχόλια `Chrysanthos: ...`. Κρατήστε τα μεγάλα κουμπιά,
   το έντονο περίγραμμα στο focus και την υψηλή αντίθεση, γιατί είναι για άτομα με χαμηλή όραση.
 - **Python:** `pip install -r requirements.txt`. Στα Windows, αν δεν βρίσκει το `python`, γράψτε `py`.
+
+## Για το AI που ελέγχει τις αλλαγές
+
+Ο Chrysanthos λείπει την Κυριακή και ένα AI ελέγχει ό,τι ανεβάζουν οι άλλοι. Οδηγίες γι' αυτό:
+
+**Πώς:** `git pull`, δες τα commits μετά το `7df59fa` και διάβασε τα diffs. Μετά:
+
+```
+npm install --no-save playwright && npx playwright install --with-deps chromium
+node --check js/app.js data/*.js
+node tests/fullcheck.js     # όλα PASS (106/106 στις 14/11)
+node tests/mobilecheck.js   # όλα PASS (36/36)
+node tests/speechcheck.js   # μόνο «very long» για τη λίστα συντομεύσεων επιτρέπεται
+node tests/validate.js      # τα νούμερα = ενότητα Validation του README
+node tests/pitchcheck.js    # India «went up 108 percent», New York «went down 25 percent»
+```
+
+Φόρτωσε και το live site: χωρίς σφάλματα στην κονσόλα, και το `?v=` ίδιο με του `index.html` στο repo.
+Τα προβλήματα πάνε στο `REVIEW.md` (χωρίς commit), με σοβαρότητα, αρχείο:γραμμή, ποιος, γιατί μετράει, πρόταση.
+**Καμία διόρθωση, κανένα commit ή push**, μέχρι να το ζητήσει ο Chrysanthos.
+
+**Αποφάσεις που έχουμε πάρει (μην τις αναιρέσεις):**
+- **Μόνο αγγλικά**, σε σελίδα και φωνή. Όλη η φωνή περνάει από `enUtter()` / `speakEnglish()` με αγγλική φωνή.
+- **Χάρτες μόνο επίπεδοι** (equirectangular), με colorbar από μικρές σε μεγάλες τιμές και σωστό lat/lon.
+  Όχι σφαίρες, φωτογραφίες, κολάζ ή κατηγορίες. Γι' αυτό 6 χάρτες της Chara είναι εκτός μενού (απόφαση της ομάδας).
+- **Δουλεύει και offline** (διπλό κλικ στο `index.html`): οι εικόνες χαρτών μπαίνουν ως data URLs σε `data/*.js`, όχι `fetch()`.
+- Το **D** λέει αριθμούς από τα δεδομένα. Οι γραμμένες περιγραφές είναι η περιγραφή της εικόνας (alt text).
+- Η φωνή στο hover ακούγεται **μόνο στο Explore**.
+- Στην αναπαραγωγή η φωνή λέει μόνο «2014, up 2.0 percent.» για να μη μιλάει πάνω στη μουσική.
+
+**Λάθη που έχουν ήδη γίνει (ψάξε γι' αυτά):**
+- Αρχείο κομμένο στη μέση (`node --check` το πιάνει).
+- Merge που γύρισε πίσω αλλαγές άλλων: παλιό `?v=`, χαμένες λειτουργίες, κείμενα που ξαναγύρισαν.
+- `?v=` που δεν άλλαξε σε **όλα** τα `<script>`/`<link>` μετά από αλλαγή σε css/js/data.
+- Ελληνική φωνή, `fetch()` για JSON, εικόνες χαρτών από `media/` χωρίς data URL (σπάνε offline).
+- Νέος χάρτης με λάθος κόψιμο colorbar: η κλίμακα ξεκινά/τελειώνει σε μαύρο, ή το «highest value» πέφτει σε γωνία ή πόλο.
+- Η λίστα συντομεύσεων στο `index.html` και το `SHORTCUTS` στο `js/app.js` πρέπει να λένε τα ίδια.
+- Ό,τι γράφουν README και `PITCH.md` πρέπει να είναι αληθινό.
+
+**Αν ζητηθεί διόρθωση:** μη σβήσεις δουλειά της ομάδας (κρύψ' την και εξήγησέ το σε σχόλιο), σχόλια στα αγγλικά που
+ξεκινάνε με `Chrysanthos:`, νέο `?v=` παντού, όλα τα tests να περνάνε, τεστ για ό,τι διορθώθηκε, `git pull` πριν το commit,
+τίτλος commit σύντομος στα αγγλικά **χωρίς αναφορά σε AI/Claude και χωρίς Co-Authored-By**, push στο `main`, και μετά
+έλεγχος ότι το live site φορτώνει.
 
 Καλή επιτυχία!
