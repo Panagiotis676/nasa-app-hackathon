@@ -75,10 +75,22 @@ def resolve_image_path(image_input: ImageInput) -> ImageInput:
 
 
 def load_image(image_input: ImageInput) -> np.ndarray:
+    """BGR image, or BGRA when the file has transparency (transparent pixels count as no data)."""
     if isinstance(image_input, np.ndarray):
         return image_input
     image_path = resolve_image_path(image_input)
-    img = cv2.imread(str(image_path))
+    # Chrysanthos: cv2.imread() on its own throws the alpha channel away, so transparent pixels (black or any colour)
+    # were read as data. The web app already treats alpha < 128 as no data, now this does too.
+    img = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
+    if img is not None:
+        if img.dtype == np.uint16:
+            img = (img >> 8).astype(np.uint8)
+        if img.dtype != np.uint8:
+            img = cv2.imread(str(image_path))  # unusual bit depth: let OpenCV convert it
+        elif img.ndim == 2:
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        elif img.shape[2] == 2:  # grey + alpha
+            img = np.dstack([np.repeat(img[:, :, :1], 3, axis=2), img[:, :, 1:]])
     if img is None:
         raise FileNotFoundError(f"Could not read image: {image_input}. Try a real path like '{BASE_DIR / 'media' / 'img.png'}'.")
     return img
@@ -98,7 +110,7 @@ def lut_from_colorbar(bar_bgr: np.ndarray, vmin: float, vmax: float):
     band of the gradient. Wide crop = horizontal bar (left = vmin). Tall crop =
     vertical bar (bottom = vmin).
     """
-    bar = bar_bgr.astype(np.float32)
+    bar = bar_bgr[:, :, :3].astype(np.float32)  # drop alpha if the crop has one
     if bar.shape[1] >= bar.shape[0]:
         h, w = bar.shape[:2]
         pad_x = max(2, int(w * 0.03))
@@ -127,11 +139,25 @@ def decode_values(img: np.ndarray, lut=None, max_side: int = 256, tol: float = 4
     h, w = img.shape[:2]
     scale = max_side / max(h, w)
     if scale < 1:
-        img = cv2.resize(img, (max(1, int(w * scale)), max(1, int(h * scale))), interpolation=cv2.INTER_AREA)
+        # Chrysanthos: INTER_AREA averages neighbouring colours. On a colormap map that makes colours that are not on the
+        # colorbar (on sharp edges, or all over a detailed map) and those pixels were then dropped as "no data" (62% of a noisy
+        # test map). So colormap maps are shrunk by picking pixels (NEAREST), like the web app. Brightness maps have no colorbar
+        # to match, so averaging is right there (night lights: single bright spots would otherwise be skipped).
+        interp = cv2.INTER_AREA if lut is None else cv2.INTER_NEAREST
+        img = cv2.resize(img, (max(1, int(w * scale)), max(1, int(h * scale))), interpolation=interp)
     h, w = img.shape[:2]
 
+    alpha = None
+    if img.ndim == 3 and img.shape[2] == 4:
+        alpha = img[:, :, 3]
+        img = np.ascontiguousarray(img[:, :, :3])
+    nodata = (alpha < 128) if alpha is not None else None
+
     if lut is None:
-        return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32) / 255.0
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32) / 255.0
+        if nodata is not None:
+            gray[nodata] = np.nan
+        return gray
 
     colors, values = lut
     pix = img.reshape(-1, 3).astype(np.float32)
@@ -143,7 +169,10 @@ def decode_values(img: np.ndarray, lut=None, max_side: int = 256, tol: float = 4
         idx = d.argmin(1)
         ok = d[np.arange(len(chunk)), idx] <= tol**2
         out[s : s + len(chunk)][ok] = values[idx[ok]]
-    return out.reshape(h, w)
+    out = out.reshape(h, w)
+    if nodata is not None:
+        out[nodata] = np.nan
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -195,6 +224,8 @@ def sonify_frame(norm: np.ndarray, seconds: float = 8.0, bands: int = 12, sr: in
 
 
 def normalise(values: np.ndarray, vmin: float, vmax: float) -> np.ndarray:
+    if not vmax > vmin:
+        raise ValueError(f"vmax ({vmax}) must be larger than vmin ({vmin}).")
     return np.clip((values - vmin) / (vmax - vmin), 0.0, 1.0)
 
 
@@ -254,12 +285,18 @@ def legend(vmin, vmax, units="") -> str:
 # (people, cars, dogs...), so on a data map it basically finds nothing. Left it in
 # as an optional extra for real photos. It only gets imported with --yolo, so
 # nobody needs to install ultralytics/torch for the normal run.
+_YOLO_MODELS: dict = {}  # Chrysanthos: the model was loaded again for every frame, now it is loaded once
+
+
 def detect_objects(img: np.ndarray, model_name="yolov8n.pt", confidence=0.25) -> dict:
     try:
         from ultralytics import YOLO
     except ImportError as exc:
         raise RuntimeError("Install ultralytics first: pip install ultralytics") from exc
-    result = YOLO(model_name)(img, conf=confidence, verbose=False)[0]
+    if model_name not in _YOLO_MODELS:
+        _YOLO_MODELS[model_name] = YOLO(model_name)
+    img = np.ascontiguousarray(img[:, :, :3])  # no alpha channel for YOLO
+    result = _YOLO_MODELS[model_name](img, conf=confidence, verbose=False)[0]
     counts: dict[str, int] = {}
     for box in result.boxes:
         label = result.names[int(box.cls.item())]
@@ -303,6 +340,8 @@ def crop_map(img: np.ndarray, crop) -> np.ndarray:
 
 
 def jukebox(frames, vmin, vmax, units="", cmap="viridis", colorbar=None, seconds=8.0, lat_range=(-90.0, 90.0), lon_range=(-180.0, 180.0), use_yolo=False, out="earth_jukebox.wav", do_play=False, crop=None):
+    if not vmax > vmin:  # Chrysanthos: equal or swapped values used to write a silent WAV without any error
+        raise ValueError(f"--vmax ({vmax}) must be larger than --vmin ({vmin}).")
     if colorbar is not None:
         lut = lut_from_colorbar(load_image(colorbar), vmin, vmax)
     elif cmap and cmap != "brightness":
@@ -363,6 +402,8 @@ def main():
     p.add_argument("--play", action="store_true")
     p.add_argument("--out", default="earth_jukebox.wav")
     a = p.parse_args()
+    if not a.vmax > a.vmin:
+        p.error(f"--vmax ({a.vmax}) must be larger than --vmin ({a.vmin}).")
 
     jukebox(a.frames, a.vmin, a.vmax, a.units, a.cmap, a.colorbar, a.seconds, tuple(a.lat), tuple(a.lon), a.yolo, a.out, a.play, crop=a.crop)
 
