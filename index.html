@@ -8,7 +8,7 @@
 <!-- Chrysanthos: everything is local (no web fonts, no trackers), so it also works offline by double-clicking.
      The ?v= number makes browsers fetch the new file after a change (GitHub Pages lets them keep old copies for 10 minutes,
      and new HTML with an old CSS/JS breaks the page). Change the number in every place when you edit css, js or data. -->
-<link rel="stylesheet" href="css/style.css?v=20261115-02">
+<link rel="stylesheet" href="css/style.css?v=20261115-04">
 </head><body>
 <a class="skip" href="#player">Skip to the player</a>
 <div class="sky" aria-hidden="true"></div>
@@ -58,7 +58,7 @@
 <label class="field">Listen to <select id="view"><option value="frames">Every frame, one after another</option><option value="change">Only what changed, first to last frame</option></select></label>
 </div>
 <!-- Chrysanthos: your own maps start here, right next to the map, so you see the result straight away -->
-<div class="row mine"><button id="addMaps" type="button" class="ico ico-up" disabled aria-disabled="true" aria-describedby="uploadStatus">Add your own maps</button><button id="removeMap" type="button" class="subtle" disabled aria-disabled="true">Remove my map</button><span id="uploadStatus" class="upload-status" role="status">Load an image first</span></div>
+<div class="row mine"><button id="addMaps" type="button" class="ico ico-up" aria-describedby="uploadStatus">Add your own maps</button><button id="removeMap" type="button" class="subtle" disabled aria-disabled="true">Remove my map</button><span id="uploadStatus" class="upload-status" role="alert" aria-live="assertive"></span></div>
 <p id="intro" class="intro"></p>
 
 <p id="status" class="status">Loading…</p>
@@ -108,7 +108,7 @@
 <li>Under “Colours and value range”, choose the map’s colour scale (or upload a picture of its colorbar) and type the lowest and highest values printed on it.</li>
 </ol>
 <!-- Chrysanthos: the "Use demo frames" button moved into "Choose a map" at the top -->
-<label class="field">Add map frames (PNG or JPEG) <input type="file" id="files" multiple></label>
+<label class="field">Add map frames (PNG, JPEG, or WebP) <input type="file" id="files" multiple></label>
 <!-- Panagiotis: list of uploaded frames, add more in batches or remove them -->
 <div class="uploads" aria-live="polite">
 <div class="uploads-head"><strong>Your images</strong> <button type="button" id="clearUploads" class="subtle">Clear all</button></div>
@@ -180,7 +180,7 @@
 <p class="m disclaimer">This is an independent project, not an official NASA product.</p>
 </footer>
 <!-- Chrysanthos: preset data, built by tools/build_nightlights.py. If it's missing the page falls back to the demo -->
-<script src="data/nightlights.js?v=20261115-02"></script>
-<script src="data/descriptions.js?v=20261115-02"></script>
-<script src="data/presets.js?v=20261115-02"></script>
-<script id="appJs" src="js/app.js?v=20261115-02"></script></body></html>
+<script src="data/nightlights.js?v=20261115-04"></script>
+<script src="data/descriptions.js?v=20261115-04"></script>
+<script src="data/presets.js?v=20261115-04"></script>
+<script id="appJs" src="js/app.js?v=20261115-04"></script></body></html>
