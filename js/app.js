@@ -1,11 +1,12 @@
 // Earth Jukebox web app: reads map frames, turns them into sound and speech.
 // Chrysanthos: moved here from the <script> block in index.html so HTML, CSS and JS are in separate files.
 const $=id=>document.getElementById(id),cl=v=>Math.max(0,Math.min(1,v));
+const DEFAULT_PRESET_ID='nightlights';
 const HEX={diverging:['#2166ac','#67a9cf','#f7f7f7','#ef8a62','#b2182b'],viridis:['#440154','#3b528b','#21918c','#5ec962','#fde725'],inferno:['#000004','#420a68','#932667','#dd513a','#fca50a','#fcffa4'],plasma:['#0d0887','#7e03a8','#cc4778','#f89540','#f0f921'],jet:['#00007f','#0000ff','#00ffff','#ffff00','#ff0000','#7f0000']};
-let S,frames=[],uploaded=[],customImageLoaded=false,mode='demo',fIdx=0,pos=0,playing=false,timer,last,ac,master,pan,voices=[],uploadAttempt=0;
+let S,frames=[],uploaded=[],customImageLoaded=false,mode='demo',fIdx=0,pos=0,playing=false,timer,last,ac,master,pan,voices=[],uploadAttempt=0,nextUploadId=0,presetAttempt=0;
 // Chrysanthos: sources = the {name, img} list being played (a preset or your uploads), customLut = colours from an uploaded colorbar,
 // preset = the NASA preset in use (or null), booting = stay quiet while the page first loads
-let sources=[],customLut=null,preset=null,booting=true,descriptions={},lastBuiltInPreset='nightlights';
+let sources=[],customLut=null,preset=null,booting=true,descriptions={};
 // Chrysanthos: view = 'frames' (play every frame) or 'change' (one sweep of last minus first frame), downVoices = the low buzz for "went down"
 let view='frames',downVoices=[];
 // Chrysanthos: Explore mode state, the cursor is kept in degrees so it stays put when the frame or the view changes
@@ -213,7 +214,7 @@ function renderTimeline(){const t=$('timeline'),key=frames.map(f=>f.name).join('
   b.setAttribute('aria-label',f.change?f.name:'Frame '+(i+1)+', '+f.name);b.onclick=()=>{if(i!==fIdx||!playing)goTo(i);};t.appendChild(b);});}
  // only the current frame's button is in the Tab order, so keyboard users reach Play quickly (arrows, N and P move between frames)
  Array.prototype.forEach.call(t.children||[],(b,i)=>{b.setAttribute('aria-current',i===fIdx?'true':'false');b.tabIndex=i===fIdx?0:-1;});}
-function draw(){const f=frames[fIdx];if(!f)return;const c=$('cv'),x=c.getContext('2d');if(c.width!==f.disp.width||c.height!==f.disp.height){c.width=f.disp.width;c.height=f.disp.height;}x.drawImage(f.disp,0,0);if(exploring){drawCursor(x,c);return;}const px=pos*c.width,w=Math.max(3,c.width/120);x.fillStyle='#000';x.fillRect(px-w,0,2*w,c.height);x.fillStyle='#ffe600';x.fillRect(px-w/2,0,w,c.height);setLon();}
+function draw(){const c=$('cv'),x=c.getContext('2d'),f=frames[fIdx];if(!f){x.clearRect(0,0,c.width,c.height);setLon();return;}if(c.width!==f.disp.width||c.height!==f.disp.height){c.width=f.disp.width;c.height=f.disp.height;}x.drawImage(f.disp,0,0);if(exploring){drawCursor(x,c);return;}const px=pos*c.width,w=Math.max(3,c.width/120);x.fillStyle='#000';x.fillRect(px-w,0,2*w,c.height);x.fillStyle='#ffe600';x.fillRect(px-w/2,0,w,c.height);setLon();}
 const updStatus=()=>{const f=frames[fIdx];$('tmMode').textContent=f&&f.change?'Change mode':'Every frame';renderTimeline();$('status').textContent=!f?'No frames loaded.':f.change?f.name:frames.length===1?f.name:'Frame '+(fIdx+1)+' of '+frames.length+': '+f.name;mapLabel('');};
 const hz=i=>440*2**((48+12*Math.floor(i/5)+[0,2,4,7,9][i%5]-69)/12);
 function initAudio(){if(ac)return;ac=new(window.AudioContext||window.webkitAudioContext)();master=ac.createGain();master.gain.value=+$('vol').value;const comp=ac.createDynamicsCompressor(),bus=ac.createGain();pan=ac.createStereoPanner?ac.createStereoPanner():null;if(pan){bus.connect(pan);pan.connect(comp);}else bus.connect(comp);comp.connect(master);master.connect(ac.destination);
@@ -279,7 +280,8 @@ const fileKey=f=>`${f.name}::${f.size}::${f.lastModified}`;
 const itemKey=x=>x.id||x.name;
 const setAutoStatus=t=>{$('autoColorbarStatus').textContent=t;};
 const setDetectBadge=(kind,text)=>{const el=$('cmapDetect');if(!el)return;el.className='detect-badge '+kind;el.textContent='Colorbar status: '+text;};
-function updateUploadControls(){const remove=$('removeMap'),uploadOption=$('preset').querySelector('[value=upload]'),hasImages=uploaded.length>0;remove.disabled=!customImageLoaded;remove.setAttribute('aria-disabled',String(!customImageLoaded));uploadOption.disabled=!hasImages;uploadOption.textContent=hasImages?'Your own images (use “Add your own maps”)':'Your own images (Add a map first)';}
+function updateUploadControls(){const remove=$('removeMap'),uploadOption=$('preset').querySelector('[value=upload]'),hasImages=uploaded.length>0;remove.disabled=!customImageLoaded;remove.setAttribute('aria-disabled',String(!customImageLoaded));uploadOption.disabled=!hasImages;uploadOption.textContent=hasImages?'Your own images (use “Add your own maps”)':'Your own images (Add a map first)';bindRemovalControls();}
+function defaultPresetId(){const P=window.EJ_PRESETS||{};if(P[DEFAULT_PRESET_ID])return DEFAULT_PRESET_ID;const option=[...$('preset').options].find(o=>o.value!=='upload'&&o.value!==DEFAULT_PRESET_ID&&!o.disabled);return option?option.value:null;}
 function renderUploadList(){const ul=$('uploadList');ul.textContent='';if(!uploaded.length){const li=document.createElement('li');li.className='empty';li.textContent='No images added yet.';ul.appendChild(li);}else uploaded.forEach((it,i)=>{const li=document.createElement('li'),nm=document.createElement('span'),btn=document.createElement('button');nm.className='name';nm.textContent=(i+1)+'. '+it.name;btn.type='button';btn.className='subtle';btn.dataset.remove=itemKey(it);btn.textContent='Remove';li.appendChild(nm);li.appendChild(btn);ul.appendChild(li);});$('clearUploads').disabled=!uploaded.length;$('uploadHint').textContent=uploaded.length?`${uploaded.length} frame${uploaded.length===1?'':'s'} loaded.`:'You can add more at any time, they are kept in order by file name.';updateUploadControls();}
 
 function makeCustomLutFromLine(line){const len=line.length||1;customLut=[];for(let k=0;k<256;k++)customLut.push(line[Math.round(k*(len-1)/255)]);$('cmap').querySelector('[value=custom]').disabled=false;}
@@ -382,21 +384,23 @@ async function addFiles(list,intro,stay,lead,fromExample){
  const fl=[...list].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
  if(!fl.length)return;
  $('uploadStatus').textContent='';
- const slow=setTimeout(()=>announce('Loading '+fl.length+' images.'),800),add=[],bad=[];
+ const slow=setTimeout(()=>announce('Loading '+fl.length+' images.'),800),add=[],bad=[],capacity=Math.max(0,10-uploaded.length);
  for(const f of fl){
   if(attempt!==uploadAttempt)return;
   if(!f.size){bad.push('This file is empty. Please choose an image file.');continue;}
   if(!f.type||!f.type.startsWith('image/')){bad.push('This file is not an image. Please choose an image file such as PNG, JPG, or WebP.');continue;}
-  try{add.push({id:fileKey(f),name:f.name,img:await loadImg(f)});}
+  if(add.length>=capacity){bad.push('You can load up to 10 custom images. Remove an image before adding another.');continue;}
+  try{add.push({id:fileKey(f)+'::'+(++nextUploadId),name:f.name,img:await loadImg(f)});}
   catch(_err){bad.push('This image could not be decoded. Please choose a valid PNG, JPG, or WebP image.');}
  }
  clearTimeout(slow);if(attempt!==uploadAttempt)return;
  $('files').value='';
  if(!add.length){if(bad.length)uploadError(bad[0]);return;}
- uploaded=add.sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
+ const newest=add[add.length-1];
+ uploaded=[...uploaded,...add].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
  customImageLoaded=!isExample;renderUploadList();sources=uploaded;mode='images';preset=null;
  const o=$('preset').querySelector('[value=upload]');o.disabled=false;$('preset').value=isExample?'example':'upload';
- $('intro').textContent=intro||'Your own images, '+uploaded.length+' frames.';fIdx=0;rebuild(lead);
+ $('intro').textContent=intro||'Your own images, '+uploaded.length+' frames.';fIdx=uploaded.indexOf(newest);rebuild(lead);
  if(bad.length)uploadError(bad[0]);else $('uploadStatus').textContent='';
  $('mapSettings').open=true;if(!stay){$('player').scrollIntoView({block:'start'});$('play').focus({preventScroll:true});}
 }
@@ -406,14 +410,16 @@ $('addMaps').onclick=()=>{$('files').click();};
 // Chrysanthos: the example in "Choose a map" adds two NASA images (data/examples.js, only loaded when needed) exactly like an upload, with the
 // range, units and map area filled in. It replaces whatever was uploaded before.
 let exampleJs=null,exampleBusy=false;
-async function loadExample(){if(exampleBusy)return;exampleBusy=true;
+async function loadExample(expectedAttempt){if(expectedAttempt!==undefined&&expectedAttempt!==presetAttempt)return;if(exampleBusy)return;exampleBusy=true;
  try{exampleJs=exampleJs||new Promise((ok,no)=>{const sc=document.createElement('script'),v=$('appJs').getAttribute('src').split('?')[1];sc.src='data/examples.js'+(v?'?'+v:'');sc.onload=ok;sc.onerror=()=>{exampleJs=null;no(new Error('examples.js'));};document.head.appendChild(sc);});
+  if(expectedAttempt!==undefined&&expectedAttempt!==presetAttempt)return;
   await exampleJs;const X=window.EJ_EXAMPLE;
+  if(expectedAttempt!==undefined&&expectedAttempt!==presetAttempt)return;
   // its colorbar sits inside the map, where auto-detection doesn't look, so it comes with the example, same as uploading it by hand
   $('cbar').value='';makeCustomLutFromLine(X.bar);manualCustomLut=true;$('cmap').value='custom';$('vmin').value=X.vmin;$('vmax').value=X.vmax;$('units').value=X.units;$('lat0').value=X.lat[0];$('lat1').value=X.lat[1];$('lon0').value=X.lon[0];$('lon1').value=X.lon[1];
   ['cropT','cropB','cropL','cropR'].forEach(k=>{$(k).value=0;});uploaded=[];
   const files=X.frames.map(f=>{const b=atob(f.src.split(',')[1]),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return new File([a],f.name,{type:'image/jpeg',lastModified:0});});
-  await addFiles(files,X.intro,true,'Air pollution over New York: NASA satellite images of nitrogen dioxide in March, the 2015 to 2019 average and 2020, when the COVID-19 lockdowns began. Press C to hear only what changed.',true);$('preset').value='example';updStatus();}
+  await addFiles(files,X.intro,true,'Air pollution over New York: NASA satellite images of nitrogen dioxide in March, the 2015 to 2019 average and 2020, when the COVID-19 lockdowns began. Press C to hear only what changed.',true);if(expectedAttempt!==undefined&&expectedAttempt!==presetAttempt)return;$('preset').value='example';updStatus();}
  catch(_err){announce('The example could not be loaded.');}
  finally{exampleBusy=false;}}
 $('startListen').addEventListener('click',()=>{if(!playing)play();});
@@ -424,24 +430,26 @@ document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest
  e.preventDefault();el.scrollIntoView({block:'start'});if(!el.hasAttribute('tabindex'))el.setAttribute('tabindex','-1');el.focus({preventScroll:true});});
 if(location.hash&&history.replaceState)history.replaceState(null,'',location.pathname+location.search);
 
-function clearCustomMap(restorePreset){const wasUpload=$('preset').value==='upload',fallback=lastBuiltInPreset;uploadAttempt++;pause();if('speechSynthesis' in window)speechSynthesis.cancel();uploaded=[];customImageLoaded=false;sources=[];customLut=null;manualCustomLut=false;autoBarState=null;$('files').value='';$('cbar').value='';$('uploadStatus').textContent='';renderUploadList();const c=$('cv'),x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);if(restorePreset){$('preset').value=fallback;const restoring=usePreset(fallback);if(wasUpload&&restoring&&restoring.finally)restoring.finally(()=>$('preset').focus());}else{frames=[];preset=null;mode='images';draw();updStatus();}updateUploadControls();}
-$('uploadList').addEventListener('click',e=>{const id=e.target&&e.target.dataset?e.target.dataset.remove:null;if(!id)return;uploaded=uploaded.filter(x=>itemKey(x)!==id);renderUploadList();if(!uploaded.length){clearCustomMap(true);announce('All uploaded frames were removed.');return;}if($('preset').value==='upload'){sources=uploaded;fIdx=0;rebuild();}});
-$('clearUploads').addEventListener('click',()=>{if(!uploaded.length)return;clearCustomMap(true);announce('All uploaded frames were removed.');});
-$('removeMap').addEventListener('click',()=>{if(!uploaded.length)return;clearCustomMap(true);announce('Your map was removed.');});
+function currentCustomImageId(){if($('preset').value!=='upload'||!uploaded.length)return null;const source=sources[fIdx],same=source&&uploaded.find(x=>x.id===source.id);return same?same.id:uploaded[Math.min(fIdx,uploaded.length-1)].id;}
+function removeCustomImage(id){removeCustomImages([id]);}
+function removeCustomImages(ids,options={}){if(!Array.isArray(ids)){options=ids||{};ids=null;}const restorePreset=options.restorePreset!==false,announceRemoval=options.announce!==false,force=!!options.force;if(!uploaded.length&&!force){updateUploadControls();return;}const removeIds=new Set(ids&&ids.length?ids:uploaded.map(itemKey)),currentId=currentCustomImageId(),oldIndex=uploaded.findIndex(x=>x.id===currentId),remaining=uploaded.filter(x=>!removeIds.has(itemKey(x)));if(!force&&remaining.length===uploaded.length){updateUploadControls();return;}uploadAttempt++;presetAttempt++;pause();if('speechSynthesis' in window)speechSynthesis.cancel();uploaded=remaining;sources=remaining;$('files').value='';$('uploadStatus').textContent='';if(remaining.length){customImageLoaded=true;mode='images';preset=null;$('preset').value='upload';fIdx=currentId&&!removeIds.has(currentId)?remaining.findIndex(x=>x.id===currentId):Math.min(Math.max(oldIndex,0),remaining.length-1);if(fIdx<0)fIdx=0;renderUploadList();rebuild();updateUploadControls();if(announceRemoval)announce('One uploaded frame was removed.');return;}customImageLoaded=false;frames=[];fIdx=0;pos=0;preset=null;mode='images';customLut=null;manualCustomLut=false;autoBarState=null;$('cbar').value='';renderUploadList();draw();if(restorePreset){const fallback=defaultPresetId();if(fallback){$('preset').value=fallback;const restoring=usePreset(fallback);if(restoring&&restoring.finally)restoring.finally(()=>{$('preset').focus();});}else{setDemo();frames=demoFrames();draw();updStatus();announce('NASA night lights is unavailable, and no built-in preset could be loaded. Showing the demo map.');}}else updStatus();updateUploadControls();if(announceRemoval)announce('All uploaded frames were removed.');}
+function bindRemovalControls(){$('clearUploads').onclick=()=>removeCustomImages();$('removeMap').onclick=()=>{const id=currentCustomImageId();if(id)removeCustomImage(id);};}
+$('uploadList').addEventListener('click',e=>{const id=e.target&&e.target.dataset?e.target.dataset.remove:null;if(id)removeCustomImage(id);});
 
 // Chrysanthos: load a ready-made map. Sets the colormap, range, units and extent for you, then plays like uploaded images.
 const readable=im=>{try{const c=document.createElement('canvas');c.width=c.height=1;const x=c.getContext('2d');x.drawImage(im,0,0,1,1);x.getImageData(0,0,1,1);return true;}catch(_err){return false;}};
-async function usePreset(id){pause();if(id!=='upload')lastBuiltInPreset=id;
-if(id==='example'){loadExample();return;}
+async function usePreset(id){const attempt=++presetAttempt;pause();updateUploadControls();
+if(id==='example')return loadExample(attempt);
 if(id==='demo'){customImageLoaded=false;updateUploadControls();setDemo();fIdx=0;rebuild('Demo with made-up data.');return;}
-if(id==='upload'){if(!uploaded.length){updateUploadControls();return;}preset=null;sources=uploaded;mode='images';$('intro').textContent='Your own images, '+uploaded.length+' frames.';fIdx=0;rebuild();return;}
+if(id==='upload'){if(!uploaded.length){updateUploadControls();return;}customImageLoaded=true;preset=null;sources=uploaded;mode='images';$('intro').textContent='Your own images, '+uploaded.length+' frames.';fIdx=0;rebuild();return;}
 customImageLoaded=false;updateUploadControls();
 const P=(window.EJ_PRESETS||{})[id];if(!P){announce('This map is missing, the file data/'+id+'.js was not found.');return;}
 $('status').textContent='Loading '+P.title+'…';
 let imgs;try{imgs=await Promise.all(P.frames.map(f=>loadURL(f.src,f.name)));}catch(err){announce('Could not load '+P.title+'.');return;}
+if(attempt!==presetAttempt)return;
 // Chrysanthos: a map loaded from an image file (not stored in a data/*.js file) can't be read when index.html is opened from the disk.
 // Say so, and go back to what was playing, instead of failing quietly with the old map still showing.
-if(!readable(imgs[0])){announce(P.title+' only works in the online version, not when the page is opened from a file.');$('preset').value=preset?preset.id:'nightlights';updStatus();return;}
+if(!readable(imgs[0])){announce(P.title+' only works in the online version, not when the page is opened from a file.');$('preset').value=preset?preset.id:DEFAULT_PRESET_ID;updStatus();return;}
 $('cmap').value=P.cmap;$('vmin').value=P.vmin;$('vmax').value=P.vmax;$('units').value=P.units||'';
 $('lat0').value=P.lat[0];$('lat1').value=P.lat[1];$('lon0').value=P.lon[0];$('lon1').value=P.lon[1];
 ['cropT','cropB','cropL','cropR'].forEach(k=>{$(k).value=P.crop&&P.crop[{cropT:'t',cropB:'b',cropL:'l',cropR:'r'}[k]]||0;});
@@ -581,7 +589,7 @@ async function startTour(){if(tourRunning)return;const id=++tourId,alive=()=>{if
  const visit=async(la,lo)=>{setExplore(true,true);exGo(la,lo);await sleep(700);alive();await tourSpeak(exText());alive();setExplore(false,true);};
  try{
   if(view!=='frames')setView('frames');
-  if($('preset').value!=='nightlights'){$('preset').value='nightlights';await usePreset('nightlights');alive();}
+  if($('preset').value!==DEFAULT_PRESET_ID){$('preset').value=DEFAULT_PRESET_ID;await usePreset(DEFAULT_PRESET_ID);alive();}
   fIdx=0;pos=0;draw();updStatus();
   await tourSpeak('Welcome to Earth Jukebox, NASA maps you can hear. This is Earth at night in 2012, from NASA Black Marble. The sound sweeps from west, in your left ear, to east, in your right. Higher notes are further north, and louder means more light.');alive();
   await sweep();
@@ -596,7 +604,7 @@ async function startTour(){if(tourRunning)return;const id=++tourId,alive=()=>{if
   $('preset').value='example';await loadExample();alive();
   await sweep();
   await visit(40.7,-74);
-  setView('frames');$('preset').value='nightlights';await usePreset('nightlights');alive();
+  setView('frames');$('preset').value=DEFAULT_PRESET_ID;await usePreset(DEFAULT_PRESET_ID);alive();
   await tourSpeak('That was the tour. Press Play to listen, E to explore, or question mark to hear all the keys.');alive();
   tourRunning=false;$('speed').value=tourSpeed;setTourBtn(false);
  }catch(_err){/* stopped by the user, stopTour() already tidied up */}}
@@ -621,7 +629,7 @@ if(k===' '){if(t==='BUTTON'||t==='SUMMARY'||t==='A')return;e.preventDefault();to
 else if(k==='arrowright'||k==='n'){e.preventDefault();step(1);}else if(k==='arrowleft'||k==='p'){e.preventDefault();step(-1);}
 else if(k==='r')replay();else if(k==='d')describeNow();else if(k==='l')say(legendText());else if(k==='c')setView(view==='change'?'frames':'change');
 else if(k==='+'||k==='='){e.preventDefault();changeSpeed(1);}else if(k==='-'||k==='_'){e.preventDefault();changeSpeed(-1);}else if(k==='?'){e.preventDefault();say(SHORTCUTS);}});
-function clearOnPageExit(){uploadAttempt++;pause();if('speechSynthesis' in window)speechSynthesis.cancel();uploaded=[];customImageLoaded=false;sources=[];frames=[];customLut=null;manualCustomLut=false;autoBarState=null;$('files').value='';$('cbar').value='';const c=$('cv'),x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);updateUploadControls();}
+function clearOnPageExit(){removeCustomImages({restorePreset:false,announce:false,force:true});}
 window.addEventListener('pagehide',clearOnPageExit);
 window.addEventListener('beforeunload',clearOnPageExit);
 setDemo();S=readS();frames=demoFrames();draw();updStatus();
@@ -631,6 +639,8 @@ setAutoStatus('Auto colorbar detection is idle.');
 // Chrysanthos: open on the real NASA night lights. The made-up demo is no longer in the menu, it only shows up if the
 // NASA data file can't be loaded, so the page is never empty.
 loadDescriptions().finally(()=>{
- if(window.EJ_PRESETS&&window.EJ_PRESETS.nightlights){$('preset').value='nightlights';usePreset('nightlights').finally(()=>{booting=false;});}
- else{$('preset').querySelector('[value=nightlights]').disabled=true;$('intro').textContent='The NASA data file (data/nightlights.js) could not be loaded, so this is a made-up demo map, not real data. You can still add your own maps below.';booting=false;}
+ const id=defaultPresetId(),defaultOption=$('preset').querySelector('[value='+DEFAULT_PRESET_ID+']');
+ if(!id){if(defaultOption)defaultOption.disabled=true;$('intro').textContent='No built-in NASA map could be loaded, so this is a made-up demo map. You can still add your own maps below.';booting=false;return;}
+ if(id!==DEFAULT_PRESET_ID&&defaultOption)defaultOption.disabled=true;
+ $('preset').value=id;usePreset(id).finally(()=>{booting=false;if(id!==DEFAULT_PRESET_ID)announce('NASA night lights is unavailable. Showing the first available built-in map.');});
 });
