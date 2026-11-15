@@ -3,7 +3,9 @@
 const $=id=>document.getElementById(id),cl=v=>Math.max(0,Math.min(1,v));
 const DEFAULT_PRESET_ID='nightlights';
 const HEX={diverging:['#2166ac','#67a9cf','#f7f7f7','#ef8a62','#b2182b'],viridis:['#440154','#3b528b','#21918c','#5ec962','#fde725'],inferno:['#000004','#420a68','#932667','#dd513a','#fca50a','#fcffa4'],plasma:['#0d0887','#7e03a8','#cc4778','#f89540','#f0f921'],jet:['#00007f','#0000ff','#00ffff','#ffff00','#ff0000','#7f0000']};
-let S,frames=[],uploaded=[],customImageLoaded=false,mode='demo',fIdx=0,pos=0,playing=false,timer,last,ac,master,pan,voices=[],uploadAttempt=0,nextUploadId=0,presetAttempt=0;
+const DEBUG_PAN=false;
+const AUDIO_TEST=new URLSearchParams(location.search).get('audiotest')==='1';
+let S,frames=[],uploaded=[],customImageLoaded=false,mode='demo',fIdx=0,pos=0,playing=false,timer,last,ac,masterMix,leftGain,rightGain,merger,splitter,leftAnalyser,rightAnalyser,stereoT=0,voices=[],uploadAttempt=0,nextUploadId=0,presetAttempt=0,audioTestStarted=false;
 // Chrysanthos: sources = the {name, img} list being played (a preset or your uploads), customLut = colours from an uploaded colorbar,
 // preset = the NASA preset in use (or null), booting = stay quiet while the page first loads
 let sources=[],customLut=null,preset=null,booting=true,descriptions={};
@@ -217,12 +219,20 @@ function renderTimeline(){const t=$('timeline'),key=frames.map(f=>f.name).join('
 function draw(){const c=$('cv'),x=c.getContext('2d'),f=frames[fIdx];if(!f){x.clearRect(0,0,c.width,c.height);setLon();return;}if(c.width!==f.disp.width||c.height!==f.disp.height){c.width=f.disp.width;c.height=f.disp.height;}x.drawImage(f.disp,0,0);if(exploring){drawCursor(x,c);return;}const px=pos*c.width,w=Math.max(3,c.width/120);x.fillStyle='#000';x.fillRect(px-w,0,2*w,c.height);x.fillStyle='#ffe600';x.fillRect(px-w/2,0,w,c.height);setLon();}
 const updStatus=()=>{const f=frames[fIdx];$('tmMode').textContent=f&&f.change?'Change mode':'Every frame';renderTimeline();$('status').textContent=!f?'No frames loaded.':f.change?f.name:frames.length===1?f.name:'Frame '+(fIdx+1)+' of '+frames.length+': '+f.name;mapLabel('');};
 const hz=i=>440*2**((48+12*Math.floor(i/5)+[0,2,4,7,9][i%5]-69)/12);
-function initAudio(){if(ac)return;ac=new(window.AudioContext||window.webkitAudioContext)();master=ac.createGain();master.gain.value=+$('vol').value;const comp=ac.createDynamicsCompressor(),bus=ac.createGain();pan=ac.createStereoPanner?ac.createStereoPanner():null;if(pan){bus.connect(pan);pan.connect(comp);}else bus.connect(comp);comp.connect(master);master.connect(ac.destination);
+function canvasTAtX(x){const r=$('cv').getBoundingClientRect(),t=r.width?(x-r.left)/r.width:0;return cl(t);}
+function stereoGains(t){const q=cl(t);return[Math.cos(q*Math.PI/2),Math.sin(q*Math.PI/2)];}
+function setStereoPosition(t,when,immediate){if(!leftGain||!rightGain||!ac)return;const q=cl(t),g=stereoGains(q),method=immediate?'setValueAtTime':'setTargetAtTime';leftGain.gain[method](g[0],when,...(immediate?[]:[.02]));rightGain.gain[method](g[1],when,...(immediate?[]:[.02]));stereoT=q;if(DEBUG_PAN)console.debug('[Earth Jukebox] stereo position',q,g);}
+function setStereoForScan(immediate){const r=$('cv').getBoundingClientRect();setStereoPosition(r.width?pos:0,ac&&ac.currentTime,immediate);}
+function setStereoForExplore(immediate){const q=(exLon-S.lon0)/Math.max(1e-9,S.lon1-S.lon0);setStereoPosition(canvasTAtX($('cv').getBoundingClientRect().left+q*$('cv').getBoundingClientRect().width),ac&&ac.currentTime,immediate);}
+function monoNode(node){node.channelCount=1;node.channelCountMode='explicit';node.channelInterpretation='speakers';return node;}
+function initAudio(){if(ac)return true;ac=new(window.AudioContext||window.webkitAudioContext)();masterMix=monoNode(ac.createGain());masterMix.gain.value=+$('vol').value;const comp=monoNode(ac.createDynamicsCompressor()),bus=monoNode(ac.createGain());leftGain=monoNode(ac.createGain());rightGain=monoNode(ac.createGain());merger=ac.createChannelMerger(2);merger.channelCountMode='explicit';merger.channelInterpretation='speakers';bus.connect(comp);comp.connect(masterMix);masterMix.connect(leftGain);masterMix.connect(rightGain);leftGain.connect(merger,0,0);rightGain.connect(merger,0,1);merger.connect(ac.destination);splitter=ac.createChannelSplitter(2);leftAnalyser=ac.createAnalyser();rightAnalyser=ac.createAnalyser();leftAnalyser.fftSize=2048;rightAnalyser.fftSize=2048;merger.connect(splitter);splitter.connect(leftAnalyser,0);splitter.connect(rightAnalyser,1);window.earDebug=()=>{const l=new Float32Array(leftAnalyser.fftSize),r=new Float32Array(rightAnalyser.fftSize);leftAnalyser.getFloatTimeDomainData(l);rightAnalyser.getFloatTimeDomainData(r);return{t:stereoT,leftGain:leftGain.gain.value,rightGain:rightGain.gain.value,leftDb:db(rms(l)),rightDb:db(rms(r))};};
 for(let b=0;b<12;b++){const f=hz(11-b),g=ac.createGain(),g2=ac.createGain(),o1=ac.createOscillator(),o2=ac.createOscillator();g.gain.value=0;g2.gain.value=.3;o1.frequency.value=f;o2.frequency.value=2*f;o1.connect(g);o2.connect(g2);g2.connect(g);g.connect(bus);o1.start();o2.start();voices.push(g);}
 // Chrysanthos: second set of voices for "hear the change", used where the value went down: an octave lower and buzzy
 // (sawtooth through a low-pass filter), so it can't be mistaken for the clean tone that means "went up"
-for(let b=0;b<12;b++){const f=hz(11-b)/2,o=ac.createOscillator(),lp=ac.createBiquadFilter(),g=ac.createGain();o.type='sawtooth';o.frequency.value=f;lp.type='lowpass';lp.frequency.value=f*3;g.gain.value=0;o.connect(lp);lp.connect(g);g.connect(bus);o.start();downVoices.push(g);}}
-function chime(dir){const sq=dir==='up'?[660,880]:dir==='down'?[880,660]:[770];sq.forEach((fr,k)=>{const o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime+k*.18;o.type='triangle';o.frequency.value=fr;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.25,t+.02);g.gain.exponentialRampToValueAtTime(.001,t+.3);o.connect(master);g.connect(master);o.disconnect();o.connect(g);o.start(t);o.stop(t+.32);});}
+for(let b=0;b<12;b++){const f=hz(11-b)/2,o=ac.createOscillator(),lp=ac.createBiquadFilter(),g=ac.createGain();o.type='sawtooth';o.frequency.value=f;lp.type='lowpass';lp.frequency.value=f*3;g.gain.value=0;o.connect(lp);lp.connect(g);g.connect(bus);o.start();downVoices.push(g);}return true;}
+function chime(dir){const sq=dir==='up'?[660,880]:dir==='down'?[880,660]:[770];setStereoForScan(true);sq.forEach((fr,k)=>{const o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime+k*.18;o.type='triangle';o.frequency.value=fr;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.25,t+.02);g.gain.exponentialRampToValueAtTime(.001,t+.3);o.connect(g);g.connect(masterMix);o.start(t);o.stop(t+.32);});}
+const rms=a=>Math.sqrt(a.reduce((s,v)=>s+v*v,0)/a.length),db=v=>20*Math.log10(Math.max(v,1e-9));
+async function runAudioTest(){if(!AUDIO_TEST||audioTestStarted||!merger||!ac)return;audioTestStarted=true;await ac.resume();const o=ac.createOscillator(),g=ac.createGain();g.gain.value=.2;o.frequency.value=440;o.connect(g);g.connect(masterMix);o.start();const rows=[];for(const t of [0,.25,.5,.75,1]){setStereoPosition(t,ac.currentTime,true);await new Promise(resolve=>setTimeout(resolve,120));const l=new Float32Array(leftAnalyser.fftSize),r=new Float32Array(rightAnalyser.fftSize);leftAnalyser.getFloatTimeDomainData(l);rightAnalyser.getFloatTimeDomainData(r);rows.push({t,leftGain:+leftGain.gain.value.toFixed(3),rightGain:+rightGain.gain.value.toFixed(3),leftDb:+db(rms(l)).toFixed(2),rightDb:+db(rms(r)).toFixed(2)});}o.stop();o.disconnect();g.disconnect();console.table(rows);console.info('[Earth Jukebox] audio test uses the live graph; custom maps share this graph:',true,'restart-east gains:',stereoGains(1),'resize and keyboard use the same canvas-bound calculation.');}
 // Chrysanthos: while playing it only says the year and the change ("2014, up 2 percent."), so it's finished before the next
 // year starts and talks less over the music. Stepping with N / P still gets the full sentence.
 function goTo(i){fIdx=i;pos=0;const f=frames[i],p=frames[i-1];let m=f.change?f.name+'.':'Frame '+(i+1)+' of '+frames.length+', '+f.name+'.',sh=f.name+'.',dir=null;if(p&&p.st.n&&f.st.n){
@@ -233,10 +243,10 @@ const pc=S.vmin>=0&&p.st.mean>0?Math.abs(100*d/p.st.mean):null;sh=f.name+', '+(d
 if(playing&&dir)chime(dir);announce(playing?sh:m);draw();updStatus();}
 function tick(){const now=performance.now();pos+=(now-last)/1000/(+$('speed').value);last=now;
 if(pos>=1){if(fIdx<frames.length-1)goTo(fIdx+1);else if($('loop').checked)goTo(0);else{pause();pos=1;draw();announce(frames[fIdx].change?'End. Press D to hear where it changed the most.':'End of frames.');return;}}
-const f=frames[fIdx],col=Math.min(f.W-1,Math.floor(pos*f.W)),t=ac.currentTime;for(let b=0;b<12;b++){const k=b*f.W+col;voices[b].gain.setTargetAtTime(f.change?f.B[k]*.08:Math.pow(f.B[k],1.5)*.07,t,.04);downVoices[b].gain.setTargetAtTime(f.change?f.Bd[k]*.13:0,t,.04);}if(pan)pan.pan.setTargetAtTime(pos*2-1,t,.04);setMeter(f,col);draw();}
+const f=frames[fIdx],col=Math.min(f.W-1,Math.floor(pos*f.W)),t=ac.currentTime;for(let b=0;b<12;b++){const k=b*f.W+col;voices[b].gain.setTargetAtTime(f.change?f.B[k]*.08:Math.pow(f.B[k],1.5)*.07,t,.04);downVoices[b].gain.setTargetAtTime(f.change?f.Bd[k]*.13:0,t,.04);}setStereoPosition(pos,t,false);setMeter(f,col);draw();}
 // Chrysanthos (merging with Panagiotis's version): Play stops whatever the voice is saying and starts the sound
 // straight away, so you never press Play and get nothing
-async function play(){if(!frames.length){announce('Add frames first.');return;}if(exploring)setExplore(false,true);if('speechSynthesis' in window)speechSynthesis.cancel();initAudio();try{await ac.resume();}catch(_err){return;}if(pos>=1)pos=0;playing=true;last=performance.now();clearInterval(timer);timer=setInterval(tick,30);setPlayBtn(true);}
+async function play(){if(!frames.length){announce('Add frames first.');return;}if(exploring)setExplore(false,true);if('speechSynthesis' in window)speechSynthesis.cancel();if(pos>=1)pos=0;if(!initAudio())return;try{await ac.resume();}catch(_err){return;}setStereoForScan(true);await runAudioTest();setStereoForScan(true);playing=true;last=performance.now();clearInterval(timer);timer=setInterval(tick,30);setPlayBtn(true);}
 // Chrysanthos: Pause now stops the voice too, not only the music. Before, it kept talking until the sentence was finished.
 function pause(){playing=false;clearInterval(timer);if(ac)voices.concat(downVoices).forEach(g=>g.gain.setTargetAtTime(0,ac.currentTime,.05));if('speechSynthesis' in window)speechSynthesis.cancel();$('live').textContent='';setPlayBtn(false);}
 const toggle=()=>playing?pause():play();
@@ -476,21 +486,20 @@ $('cmap').addEventListener('change',()=>{if($('cmap').value==='gray'){$('vmin').
 $('play').onclick=toggle;$('prev').onclick=()=>step(-1);$('next').onclick=()=>step(1);$('replay').onclick=replay;$('desc').onclick=describeNow;$('leg').onclick=()=>say(legendText());
 // ---------------------------------------------------------------------------------------------
 // Chrysanthos: "Download sound" renders exactly what Play would play (every frame, or the change sweep) into a WAV
-// file: same voices, panning and chimes, at the chosen speed. The spoken voice isn't in it, browsers can't record it.
+// file: same voices, panning and chimes, at the chosen speed. speechSynthesis is not Web Audio and cannot be panned.
 // Useful for the submission (it allows "a collection of audio files") and as a clean soundtrack for the video.
 // ---------------------------------------------------------------------------------------------
 function chimeAt(oc,out,dir,t0){const sq=dir==='up'?[660,880]:dir==='down'?[880,660]:[770];sq.forEach((fr,k)=>{const o=oc.createOscillator(),g=oc.createGain(),t=t0+k*.18;o.type='triangle';o.frequency.value=fr;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.25,t+.02);g.gain.exponentialRampToValueAtTime(.001,t+.3);o.connect(g);g.connect(out);o.start(t);o.stop(t+.32);});}
 function renderSound(){
  const sec=+$('speed').value,sr=22050,n=frames.length,dur=n*sec+.5,O=window.OfflineAudioContext||window.webkitOfflineAudioContext;
- const oc=new O(2,Math.ceil(dur*sr),sr),out=oc.createGain(),comp=oc.createDynamicsCompressor(),bus=oc.createGain(),pn=oc.createStereoPanner();
- out.gain.value=.9;bus.connect(pn);pn.connect(comp);comp.connect(out);out.connect(oc.destination);
+ const oc=new O(2,Math.ceil(dur*sr),sr),offlineMix=monoNode(oc.createGain()),comp=monoNode(oc.createDynamicsCompressor()),bus=monoNode(oc.createGain()),offlineLeft=monoNode(oc.createGain()),offlineRight=monoNode(oc.createGain()),offlineMerger=oc.createChannelMerger(2);
+ offlineMix.gain.value=.9;offlineMerger.channelCountMode='explicit';offlineMerger.channelInterpretation='speakers';bus.connect(comp);comp.connect(offlineMix);offlineMix.connect(offlineLeft);offlineMix.connect(offlineRight);offlineLeft.connect(offlineMerger,0,0);offlineRight.connect(offlineMerger,0,1);offlineMerger.connect(oc.destination);
  const up=[],dn=[];
  for(let b=0;b<12;b++){const f=hz(11-b),g=oc.createGain(),g2=oc.createGain(),o1=oc.createOscillator(),o2=oc.createOscillator();g.gain.value=0;g2.gain.value=.3;o1.frequency.value=f;o2.frequency.value=2*f;o1.connect(g);o2.connect(g2);g2.connect(g);g.connect(bus);o1.start();o2.start();up.push(g);
   const d=oc.createGain(),o=oc.createOscillator(),lp=oc.createBiquadFilter();o.type='sawtooth';o.frequency.value=f/2;lp.type='lowpass';lp.frequency.value=f*1.5;d.gain.value=0;o.connect(lp);lp.connect(d);d.connect(bus);o.start();dn.push(d);}
  frames.forEach((f,i)=>{const t0=i*sec,p=frames[i-1];
-  if(p&&p.st.n&&f.st.n){const d=f.st.mean-p.st.mean,th=S.vmin>=0&&p.st.mean>0?p.st.mean*.01:(S.vmax-S.vmin)*.01;chimeAt(oc,out,d>th?'up':d<-th?'down':'same',t0);}
-  pn.pan.setValueAtTime(-1,t0);pn.pan.linearRampToValueAtTime(1,t0+sec-.01);
-  for(let col=0;col<f.W;col++){const t=t0+col/f.W*sec;for(let b=0;b<12;b++){const k=b*f.W+col;up[b].gain.setTargetAtTime(f.change?f.B[k]*.08:Math.pow(f.B[k],1.5)*.07,t,.04);dn[b].gain.setTargetAtTime(f.change?f.Bd[k]*.13:0,t,.04);}}});
+  if(p&&p.st.n&&f.st.n){const d=f.st.mean-p.st.mean,th=S.vmin>=0&&p.st.mean>0?p.st.mean*.01:(S.vmax-S.vmin)*.01;chimeAt(oc,offlineMix,d>th?'up':d<-th?'down':'same',t0);}
+  for(let col=0;col<f.W;col++){const t=t0+col/f.W*sec,[l,r]=stereoGains(col/Math.max(1,f.W-1));offlineLeft.gain.setValueAtTime(l,t);offlineRight.gain.setValueAtTime(r,t);for(let b=0;b<12;b++){const k=b*f.W+col;up[b].gain.setTargetAtTime(f.change?f.B[k]*.08:Math.pow(f.B[k],1.5)*.07,t,.04);dn[b].gain.setTargetAtTime(f.change?f.Bd[k]*.13:0,t,.04);}}});
  for(let b=0;b<12;b++){up[b].gain.setTargetAtTime(0,n*sec,.05);dn[b].gain.setTargetAtTime(0,n*sec,.05);}
  return oc.startRendering();}
 // 16-bit stereo WAV, one gain for the whole file (so loud and quiet years keep their difference)
@@ -512,7 +521,7 @@ async function downloadSound(){
  catch(err){announce('Sorry, this browser could not make the sound file.');}
  finally{btn.disabled=false;btn.textContent='Download sound';}}
 $('dl').addEventListener('click',downloadSound);
-$('vol').addEventListener('input',()=>{if(master)master.gain.value=+$('vol').value;});
+$('vol').addEventListener('input',()=>{if(masterMix)masterMix.gain.value=+$('vol').value;});
 // Chrysanthos: Explore mode. E (or the button) stops playback and lets you walk around the map with the arrow keys,
 // a click or a finger. Every step plays one short note for that spot, Enter says the place and the value in words.
 // 10 degree steps suit the whole Earth but jump straight off a small map (the example is ~9 degrees tall), so small maps get smaller steps
@@ -528,9 +537,8 @@ function drawCursor(x,c){const px=(exLon-S.lon0)/(S.lon1-S.lon0)*c.width,py=(S.l
  // dark outline first so the yellow cross shows on bright and dark maps alike
  [['#000',lw*3],['#ffe600',lw]].forEach(([col,w])=>{x.strokeStyle=col;x.lineWidth=w;x.beginPath();x.moveTo(0,py);x.lineTo(px-r,py);x.moveTo(px+r,py);x.lineTo(c.width,py);x.moveTo(px,0);x.lineTo(px,py-r);x.moveTo(px,py+r);x.lineTo(px,c.height);x.stroke();x.beginPath();x.arc(px,py,r,0,2*Math.PI);x.stroke();});
  const ns=Math.round(exLat),ew=Math.round(exLon);$('tmLon').textContent='Lat '+Math.abs(ns)+'° '+(ns>=0?'N':'S')+' · Lon '+Math.abs(ew)+'° '+(ew>=0?'E':'W');}
-function exTone(){const f=frames[fIdx];if(!f)return;initAudio();ac.resume().catch(()=>{});
- const v=exAvg(f.vals,f.W,f.H,exLat,exLon),t=ac.currentTime,out=ac.createGain();
- if(ac.createStereoPanner){const p=ac.createStereoPanner();p.pan.value=Math.max(-1,Math.min(1,(exLon-S.lon0)/(S.lon1-S.lon0)*2-1));out.connect(p);p.connect(master);}else out.connect(master);
+async function exTone(){const f=frames[fIdx];if(!f||!initAudio())return;try{await ac.resume();}catch(_err){return;}setStereoForExplore(true);await runAudioTest();
+ const v=exAvg(f.vals,f.W,f.H,exLat,exLon),t=ac.currentTime,out=monoNode(ac.createGain());out.connect(masterMix);
  if(v!==v){// no data: a soft click, a few ms of fading noise
   const n=ac.createBufferSource(),buf=ac.createBuffer(1,Math.round(ac.sampleRate*.015),ac.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length)**3;
   n.buffer=buf;out.gain.value=.2;n.connect(out);n.start(t);return;}
@@ -562,6 +570,7 @@ function exSpeak(){const t=exText();if(t)say(t);}
 const exPoint=e=>{const r=$('cv').getBoundingClientRect();return[S.lat1-(e.clientY-r.top)/r.height*(S.lat1-S.lat0),S.lon0+(e.clientX-r.left)/r.width*(S.lon1-S.lon0)];};
 $('explore').onclick=()=>setExplore(!exploring);
 $('stopSpeech').onclick=()=>{if('speechSynthesis' in window)speechSynthesis.cancel();setSpeechStatus('');$('live').textContent='';};
+window.addEventListener('resize',()=>{if(!ac)return;if(exploring)setStereoForExplore(false);else setStereoForScan(false);});
 // a click or a tap on the map jumps there (and turns Explore on), dragging a finger keeps playing as it moves
 $('cv').addEventListener('pointerdown',e=>{if(!frames.length)return;if(!exploring)setExplore(true);exDrag=true;try{$('cv').setPointerCapture(e.pointerId);}catch(_err){/* not supported */}exGo(...exPoint(e));});
 // in Explore a mouse plays just by moving over the map, no click needed (a finger has to touch, so that one needs exDrag)

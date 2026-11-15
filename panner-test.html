@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Earth Jukebox stereo panner test</title>
+<style>
+body{font:18px system-ui,sans-serif;max-width:38rem;margin:3rem auto;padding:0 1rem}
+button{font:inherit;min-height:48px;margin:.5rem .5rem .5rem 0;padding:.6rem 1rem}
+</style>
+</head>
+<body>
+<h1>Stereo panner test</h1>
+<p>Use headphones or a stereo output. Each button plays a 440 Hz tone for one second.</p>
+<button id="left" type="button">Left only</button>
+<button id="right" type="button">Right only</button>
+<p id="status" role="status"></p>
+<script>
+let audioContext;
+
+async function playInEar(channel, label) {
+  audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+  await audioContext.resume();
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  const merger = audioContext.createChannelMerger(2);
+  const now = audioContext.currentTime;
+  oscillator.frequency.value = 440;
+  gain.gain.setValueAtTime(.2, now);
+  gain.gain.exponentialRampToValueAtTime(.001, now + 1);
+  oscillator.connect(gain);
+  gain.connect(merger, 0, channel);
+  merger.connect(audioContext.destination);
+  oscillator.start(now);
+  oscillator.stop(now + 1);
+  document.querySelector('#status').textContent = label + ' tone is playing.';
+}
+
+document.querySelector('#left').addEventListener('click', () => playInEar(0, 'Left'));
+document.querySelector('#right').addEventListener('click', () => playInEar(1, 'Right'));
+</script>
+</body>
+</html>

@@ -13,11 +13,10 @@ const check = (name, ok, info = '') => results.push([ok ? 'PASS' : 'FAIL', name,
     Object.defineProperty(window, 'speechSynthesis', { value: { speak(u) { __said.push(u.text); __vlang.push(u.voice ? u.voice.lang : 'none'); __talking = true; if (u.onend) setTimeout(() => u.onend(), 30); }, cancel() { __cancels++; __talking = false; }, getVoices() { return [{ lang: 'el-GR', name: 'Melina' }, { lang: 'en-US', name: 'Samantha' }]; }, addEventListener() {}, speaking: false, pending: false } });
     window.__vlang = [];
     window.SpeechSynthesisUtterance = class { constructor(t) { this.text = t; } };
-    // Explore checks: remember every oscillator / panner / noise click the page makes, and vibrations
-    window.__osc = []; window.__pan = []; window.__clicks = 0; window.__vib = [];
-    const B = BaseAudioContext.prototype, co = B.createOscillator, cp = B.createStereoPanner, cb = B.createBufferSource;
+    // Explore checks: remember every oscillator / stereo position / noise click the page makes, and vibrations
+    window.__osc = []; window.__clicks = 0; window.__vib = [];
+    const B = BaseAudioContext.prototype, co = B.createOscillator, cb = B.createBufferSource;
     B.createOscillator = function () { const o = co.call(this); __osc.push(o); return o; };
-    B.createStereoPanner = function () { const o = cp.call(this); __pan.push(o); return o; };
     B.createBufferSource = function () { __clicks++; return cb.call(this); };
     navigator.vibrate = ms => { __vib.push(ms); return true; };
   });
@@ -165,8 +164,8 @@ const check = (name, ok, info = '') => results.push([ok ? 'PASS' : 'FAIL', name,
   const lat0 = await ev(() => exLat), lon0 = await ev(() => exLon), n0 = await ev(() => __osc.length);
   await key('ArrowRight');
   check('Arrow right moves the cursor 10° east and plays a note (frame stays)', (await ev(() => exLon)) === lon0 + 10 && (await ev(() => __osc.length)) > n0 && (await status()) === st0, `lon ${lon0} -> ${await ev(() => exLon)}`);
-  const pan1 = await ev(() => __pan.at(-1).pan.value), f1 = await ev(() => __osc.at(-1).frequency.value);
-  await key('Shift+ArrowRight'); check('Shift = 30° step, more to the right ear', (await ev(() => exLon)) === lon0 + 40 && (await ev(() => __pan.at(-1).pan.value)) > pan1);
+  const right1 = await ev(() => rightGain.gain.value), f1 = await ev(() => __osc.at(-1).frequency.value);
+  await key('Shift+ArrowRight'); check('Shift = 30° step, more to the right ear', (await ev(() => exLon)) === lon0 + 40 && (await ev(() => rightGain.gain.value)) > right1);
   await key('Shift+ArrowUp'); check('Moving north raises the pitch', (await ev(() => exLat)) === lat0 + 30 && (await ev(() => __osc.at(-1).frequency.value)) > f1, `${f1.toFixed(0)} -> ${(await ev(() => __osc.at(-1).frequency.value)).toFixed(0)} Hz`);
   await key('Shift+ArrowUp'); await key('Shift+ArrowUp'); await key('ArrowUp');
   check('Edge of the map is announced', (await ev(() => __said.at(-1))) === 'North edge of the map.', await ev(() => __said.at(-1)));

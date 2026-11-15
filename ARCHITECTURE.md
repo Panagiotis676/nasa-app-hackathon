@@ -72,7 +72,7 @@ flowchart LR
     subgraph WEB["Web Jukebox (browser)"]
         UI["Accessible UI<br/>keyboard · screen reader"] --> MODE["Mode controller<br/>Timeline · Explore · Orchestra"]
         MODE --> MAP["Mapping layer<br/>value → pitch · pan · volume · timbre"]
-        MAP --> AUD["Audio engine<br/>Web Audio / Tone.js"]
+        MAP --> AUD["Audio engine<br/>Web Audio API"]
         MODE --> FB["Speech & haptics<br/>aria-live · vibration"]
     end
 ```
@@ -151,7 +151,7 @@ Pure functions, no audio code — easy to test and tweak.
 
 ### 5.5 Audio engine (browser)
 
-- Built on the Web Audio API, using Tone.js for synths, scheduling and effects.
+- Built on the native Web Audio API, with one mono master mix feeding equal-power left and right gains into a stereo merger.
 - Max 3–4 voices at once, a master limiter, short attack/release envelopes — no clicks, no clipping.
 - **Instruments for Orchestra mode:** water = soft pad, vegetation = marimba, sand/soil = low drone, ice/cloud = bells.
 - Audio starts only after a key press or click (browsers block autoplay); the start button is the first focusable element.
@@ -207,7 +207,7 @@ nasa-app-hackathon/
 │   ├── js/
 │   │   ├── app.js            # state, keyboard, wiring
 │   │   ├── mappings.js       # data → sound parameters
-│   │   ├── engine.js         # Tone.js voices and effects
+│   │   ├── engine.js         # Audio voices and effects
 │   │   ├── modes/            # timeline.js · explore.js · orchestra.js
 │   │   └── a11y.js           # announcements, haptics
 │   └── data/                 # generated track JSON + thumbnails
@@ -230,7 +230,7 @@ The web app is fully static, so it can be hosted for free on **GitHub Pages** fo
 |---|---|---|
 | Data pipeline | Python 3.13, Pillow, NumPy, OpenCV, SciPy | Team already uses them |
 | Front end | Plain HTML, CSS, JavaScript (no build step) | Fast to build, nothing to install |
-| Audio | Web Audio API + Tone.js | Real-time synthesis and scheduling in every modern browser |
+| Audio | Web Audio API | Real-time synthesis and stereo routing in every modern browser |
 | Speech | Screen reader via `aria-live`; Web Speech API as fallback | Works with the user's own screen reader |
 | Hosting | GitHub Pages | Free, one link for judges |
 
